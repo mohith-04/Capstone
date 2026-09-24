@@ -1,0 +1,43 @@
+/* index.css — global baseline styles
+ * Only reset/typography here. Component-specific styles live in their own CSS
+ * modules so they can be read alongside the component in a viva.
+ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #0d1117;
+  --color-surface: #161b22;
+  --color-border: #30363d;
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #8b949e;
+  --color-accent-green: #3fb950;
+  --color-accent-red: #f85149;
+  --color-accent-blue: #58a6ff;
+  --color-accent-yellow: #d29922;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+}
+
+body {
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Leaflet CSS is imported in main.jsx; override its z-index here so
+ * our UI panels always appear above the map tiles. */
+.leaflet-container {
+  background: #1c2430;
+}

@@ -1,0 +1,131 @@
+/* TelemetryPanel.css */
+
+.telemetry-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.telemetry-placeholder {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* ── Speed ────────────────────────────────────────────────────────────────── */
+
+.telemetry-speed {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.telemetry-speed__value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-accent-blue);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.telemetry-speed__unit {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* ── Progress bar ─────────────────────────────────────────────────────────── */
+
+.telemetry-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.telemetry-bar__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.telemetry-bar__fill--speed {
+  background: var(--color-accent-blue);
+}
+
+.telemetry-bar__fill--progress {
+  background: var(--color-accent-green);
+}
+
+/* ── Data rows ────────────────────────────────────────────────────────────── */
+
+.telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.telemetry-row__label {
+  color: var(--color-text-secondary);
+}
+
+.telemetry-row__value {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.telemetry-road {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  text-align: right;
+}
+
+/* ── Congestion ────────────────────────────────────────────────────────────── */
+
+.congestion--clear   { color: var(--color-accent-green); }
+.congestion--moderate{ color: var(--color-accent-yellow); }
+.congestion--heavy   { color: var(--color-accent-red); }
+
+/* ── Signal badge ─────────────────────────────────────────────────────────── */
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(210, 153, 34, 0.15);
+  border: 1px solid rgba(210, 153, 34, 0.4);
+  color: #d29922;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.signal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d29922;
+  animation: pulse-amber 1s ease-in-out infinite;
+}
+
+@keyframes pulse-amber {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── ETA ──────────────────────────────────────────────────────────────────── */
+
+.telemetry-eta {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-accent-green);
+  font-variant-numeric: tabular-nums;
+}

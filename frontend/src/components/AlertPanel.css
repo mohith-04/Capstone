@@ -1,0 +1,138 @@
+/* AlertPanel.css */
+
+.alert-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Hospital capability card ─────────────────────────────────────────────── */
+
+.hospital-info {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hospital-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.hospital-type-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.hospital-type-badge--trauma_centre {
+  background: rgba(248,81,73,0.15);
+  border: 1px solid rgba(248,81,73,0.4);
+  color: #f85149;
+}
+
+.hospital-type-badge--cardiac {
+  background: rgba(210,153,34,0.15);
+  border: 1px solid rgba(210,153,34,0.4);
+  color: #d29922;
+}
+
+.hospital-type-badge--general {
+  background: rgba(139,148,158,0.15);
+  border: 1px solid rgba(139,148,158,0.3);
+  color: #8b949e;
+}
+
+.hospital-type-badge--children {
+  background: rgba(88,166,255,0.15);
+  border: 1px solid rgba(88,166,255,0.4);
+  color: #58a6ff;
+}
+
+.hospital-caps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+}
+
+.hospital-cap {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.hospital-cap span {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.cap-yes { color: var(--color-accent-green) !important; }
+.cap-no  { color: var(--color-text-secondary) !important; }
+
+/* ── Alert event cards ────────────────────────────────────────────────────── */
+
+.alert-events {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alert-empty {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 10px 0;
+}
+
+.alert-card {
+  border-radius: 6px;
+  padding: 10px 12px;
+  border-left: 3px solid;
+  background: var(--color-bg);
+}
+
+.alert-card--initial {
+  border-color: var(--color-accent-blue);
+}
+.alert-card--update {
+  border-color: var(--color-accent-yellow);
+}
+.alert-card--arrival {
+  border-color: var(--color-accent-green);
+}
+
+.alert-event-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.alert-event-header--initial { color: var(--color-accent-blue); }
+.alert-event-header--update  { color: var(--color-accent-yellow); }
+.alert-event-header--arrival { color: var(--color-accent-green); }
+
+.alert-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.alert-row span {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.alert-time {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  text-align: right;
+}

@@ -1,0 +1,115 @@
+/* MetricsPanel.css */
+
+.metrics-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metrics-empty {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* ── Live counters ────────────────────────────────────────────────────────── */
+
+.metrics-live {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metrics-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.metrics-row__label {
+  color: var(--color-text-secondary);
+}
+
+.metrics-row__value {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.metrics-elapsed {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-accent-blue);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Mission complete ─────────────────────────────────────────────────────── */
+
+.metrics-complete-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent-green);
+  text-align: center;
+  padding: 4px 0;
+}
+
+.metrics-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.metrics-stat:last-of-type {
+  border-bottom: none;
+}
+
+.metrics-stat__label {
+  color: var(--color-text-secondary);
+}
+
+.metrics-stat__value {
+  font-weight: 600;
+}
+
+.metrics-stat__value--green { color: var(--color-accent-green); }
+.metrics-stat__value--blue  { color: var(--color-accent-blue); }
+.metrics-stat__value--yellow{ color: var(--color-accent-yellow); }
+
+/* ── Before/after table ──────────────────────────────────────────────────── */
+
+.before-after-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.before-after-table th {
+  color: var(--color-text-secondary);
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.before-after-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+}
+
+.before-after-table tr:last-child td {
+  border-bottom: none;
+  font-weight: 700;
+}
+
+.row-without td { color: var(--color-accent-red); }
+.row-with td    { color: var(--color-accent-green); }
+.row-saved  td  { color: var(--color-accent-green); font-weight: 700; }
+
+.ba-label { color: var(--color-text-secondary) !important; font-weight: 400 !important; }

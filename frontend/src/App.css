@@ -1,0 +1,226 @@
+/* App.css — Component styles for the root App shell (Stage 6)
+ * All layout, header, sidebar, and tab-bar styles live here.
+ * Each child component (MapView, SignalPanel, etc.) has its own CSS file.
+ */
+
+/* ── Overall layout ──────────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  z-index: 1000;
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-header__icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.app-header__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.app-header__sub {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Main two-column layout ──────────────────────────────────────────────── */
+
+.app-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.app-map-area {
+  flex: 1;
+  background: #0d1117;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;   /* prevent flex blowout */
+}
+
+.app-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;  /* tab bar is sticky; content area scrolls independently */
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+
+.tab-bar {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  flex: 1;
+  min-width: 52px;
+  padding: 9px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  text-align: center;
+  white-space: nowrap;
+  position: relative;
+}
+
+.tab-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.tab-btn--active {
+  color: var(--color-accent-blue);
+  border-bottom-color: var(--color-accent-blue);
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 3px;
+  vertical-align: top;
+}
+
+/* ── Sidebar content area ────────────────────────────────────────────────── */
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.sidebar-content::-webkit-scrollbar { width: 4px; }
+.sidebar-content::-webkit-scrollbar-track { background: transparent; }
+.sidebar-content::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+/* ── Info cards (sidebar panels) ─────────────────────────────────────────── */
+
+.info-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.info-card--error {
+  border-color: #6e2c2c;
+  background: #1a0a0a;
+}
+
+.info-card__title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+/* ── Info table ──────────────────────────────────────────────────────────── */
+
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.info-table td {
+  padding: 4px 0;
+  vertical-align: top;
+}
+
+.info-table td:first-child {
+  color: var(--color-text-secondary);
+  width: 100px;
+}
+
+.info-table td:last-child {
+  color: var(--color-text-primary);
+}
+
+.info-table code {
+  background: #21262d;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+}
+
+/* ── Stage progress list ─────────────────────────────────────────────────── */
+
+.stage-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stage-list__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 4px 0;
+}
+
+.stage-list__item--done {
+  color: var(--color-accent-green);
+}
+
+.stage-list__check {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}

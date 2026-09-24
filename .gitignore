@@ -1,0 +1,27 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+backend/venv/
+backend/.env
+backend/*.egg-info/
+backend/.pytest_cache/
+backend/htmlcov/
+backend/.coverage
+
+# ── Node / React ──────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# ── OS / IDE ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ── OSMnx graph cache (large binary files) ────────────────────────────────────
+backend/data/graph_cache/

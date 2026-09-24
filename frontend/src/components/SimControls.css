@@ -1,0 +1,183 @@
+/* SimControls.css */
+
+.sim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── State badge ──────────────────────────────────────────────────────────── */
+
+.sim-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sim-state-badge--idle {
+  background: rgba(139,148,158,0.12);
+  border: 1px solid rgba(139,148,158,0.3);
+  color: #8b949e;
+}
+
+.sim-state-badge--starting {
+  background: rgba(88,166,255,0.12);
+  border: 1px solid rgba(88,166,255,0.4);
+  color: #58a6ff;
+  animation: pulse-blue 1s ease-in-out infinite;
+}
+
+.sim-state-badge--running {
+  background: rgba(63,185,80,0.12);
+  border: 1px solid rgba(63,185,80,0.4);
+  color: #3fb950;
+}
+
+.sim-state-badge--arrived {
+  background: rgba(163,113,247,0.12);
+  border: 1px solid rgba(163,113,247,0.4);
+  color: #a371f7;
+}
+
+.sim-state-badge--error {
+  background: rgba(248,81,73,0.12);
+  border: 1px solid rgba(248,81,73,0.4);
+  color: #f85149;
+}
+
+@keyframes pulse-blue {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── Form fields ──────────────────────────────────────────────────────────── */
+
+.sim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sim-field label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sim-select {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  padding: 6px 8px;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+}
+
+.sim-select:focus {
+  border-color: var(--color-accent-blue);
+}
+
+/* ── Slider ──────────────────────────────────────────────────────────────── */
+
+.sim-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sim-slider {
+  flex: 1;
+  accent-color: var(--color-accent-blue);
+  cursor: pointer;
+}
+
+.sim-slider-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent-blue);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.sim-btn {
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+
+.sim-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.sim-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sim-btn--start {
+  background: #238636;
+  color: #fff;
+}
+.sim-btn--start:hover:not(:disabled) {
+  background: #2ea043;
+}
+
+.sim-btn--stop {
+  background: rgba(248,81,73,0.15);
+  border: 1px solid rgba(248,81,73,0.5);
+  color: #f85149;
+}
+.sim-btn--stop:hover:not(:disabled) {
+  background: rgba(248,81,73,0.25);
+}
+
+.sim-btn--reroute {
+  background: rgba(210,153,34,0.15);
+  border: 1px solid rgba(210,153,34,0.5);
+  color: #d29922;
+}
+.sim-btn--reroute:hover:not(:disabled) {
+  background: rgba(210,153,34,0.25);
+}
+
+.sim-btn--reset {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  padding: 6px 0;
+}
+.sim-btn--reset:hover:not(:disabled) {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+}
+
+.sim-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-loading {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}

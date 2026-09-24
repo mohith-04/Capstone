@@ -1,0 +1,19 @@
+# ── Stage 1 (scaffold) ──────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0   # standard extras include websockets + watchfiles
+python-dotenv==1.0.1
+httpx==0.27.0               # async HTTP client used in tests + inter-service calls
+
+# ── Stage 2 (road network + routing) ────────────────────────────────────────
+osmnx==1.9.3
+networkx==3.3
+shapely==2.1.2
+geopandas==0.14.4
+scipy==1.13.0               # required by osmnx for some graph operations
+scikit-learn                # required by osmnx nearest_nodes on unprojected graphs
+
+# ── Stage 4 (signal simulation) — no extra deps beyond core ─────────────────
+# (state machine is pure Python)
+
+# ── Stage 5 (hospital SMS alert) — uncomment when adding Twilio ─────────────
+# twilio==9.0.5

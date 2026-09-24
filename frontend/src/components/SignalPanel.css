@@ -1,0 +1,154 @@
+/* SignalPanel.css */
+
+.signal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.signal-empty {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* ── Signal card ──────────────────────────────────────────────────────────── */
+
+.signal-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signal-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.signal-card__id {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Mode badges ──────────────────────────────────────────────────────────── */
+
+.signal-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.signal-mode--normal {
+  background: rgba(139, 148, 158, 0.15);
+  border: 1px solid rgba(139, 148, 158, 0.3);
+  color: #8b949e;
+}
+
+.signal-mode--priority_pending {
+  background: rgba(210, 153, 34, 0.15);
+  border: 1px solid rgba(210, 153, 34, 0.5);
+  color: #d29922;
+  animation: pulse-pending 1.2s ease-in-out infinite;
+}
+
+.signal-mode--priority_active {
+  background: rgba(63, 185, 80, 0.15);
+  border: 1px solid rgba(63, 185, 80, 0.5);
+  color: #3fb950;
+  animation: glow-active 1.5s ease-in-out infinite alternate;
+}
+
+.signal-mode--restoring {
+  background: rgba(88, 166, 255, 0.15);
+  border: 1px solid rgba(88, 166, 255, 0.4);
+  color: #58a6ff;
+  animation: fade-restoring 2s ease-in-out infinite;
+}
+
+@keyframes pulse-pending {
+  0%, 100% { opacity: 1; box-shadow: none; }
+  50%       { opacity: 0.6; box-shadow: 0 0 6px rgba(210, 153, 34, 0.5); }
+}
+
+@keyframes glow-active {
+  from { box-shadow: 0 0 4px rgba(63, 185, 80, 0.4); }
+  to   { box-shadow: 0 0 12px rgba(63, 185, 80, 0.7); }
+}
+
+@keyframes fade-restoring {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── Traffic lights ───────────────────────────────────────────────────────── */
+
+.signal-lights {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.signal-light-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.signal-light-label {
+  font-size: 9px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.signal-light {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.3);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.signal-light--green  {
+  background: #3fb950;
+  box-shadow: 0 0 8px rgba(63, 185, 80, 0.6);
+}
+.signal-light--amber  {
+  background: #d29922;
+  box-shadow: 0 0 8px rgba(210, 153, 34, 0.6);
+}
+.signal-light--red    {
+  background: #f85149;
+  box-shadow: 0 0 4px rgba(248, 81, 73, 0.3);
+}
+
+/* ── ETA / time-saved row ─────────────────────────────────────────────────── */
+
+.signal-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.signal-eta {
+  color: var(--color-text-secondary);
+}
+
+.signal-saved {
+  color: var(--color-accent-green);
+  font-weight: 600;
+}
