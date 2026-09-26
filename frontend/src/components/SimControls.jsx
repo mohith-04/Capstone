@@ -38,6 +38,9 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
   const [hospitalId,      setHospitalId]      = useState('govt-gen-hosp')
   const [severity,        setSeverity]        = useState('critical')
   const [speedMultiplier, setSpeedMultiplier] = useState(5)
+  const [emergencyType,   setEmergencyType]   = useState('Road Traffic Accident')
+  const [bloodType,       setBloodType]       = useState('Unknown')
+  const [notes,           setNotes]           = useState('')
 
   // Load hospital registry once on mount
   useEffect(() => {
@@ -66,12 +69,13 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
     }
     onStart({
       hospitalId,
-      // Pass the hospital's actual coordinates so the route goes TO the hospital,
-      // not to a hardcoded fallback coordinate.
       endLat: selectedHospital.lat,
       endLng: selectedHospital.lng,
       severity,
       speedMultiplier: Number(speedMultiplier),
+      emergencyType,
+      bloodType,
+      notes,
     })
   }
 
@@ -127,6 +131,64 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
           <option value="serious"> 🟠 Serious</option>
           <option value="moderate">🟡 Moderate</option>
         </select>
+      </div>
+
+      {/* ── Emergency Type ─────────────────────────────────────────────── */}
+      <div className="sim-field">
+        <label htmlFor="emergency-type-select">Emergency Type</label>
+        <select
+          id="emergency-type-select"
+          className="sim-select"
+          value={emergencyType}
+          onChange={(e) => setEmergencyType(e.target.value)}
+          disabled={isRunning}
+        >
+          <option value="Road Traffic Accident">🚗 Road Traffic Accident</option>
+          <option value="Heart Attack / Cardiac Arrest">❤️ Heart Attack / Cardiac Arrest</option>
+          <option value="Stroke">🧠 Stroke</option>
+          <option value="Traumatic Fall">🏚️ Traumatic Fall</option>
+          <option value="Burns">🔥 Burns</option>
+          <option value="Respiratory Distress">🫁 Respiratory Distress</option>
+          <option value="Poisoning / Overdose">⚠️ Poisoning / Overdose</option>
+          <option value="Obstetric Emergency">🤰 Obstetric Emergency</option>
+          <option value="Unknown">❓ Unknown</option>
+        </select>
+      </div>
+
+      {/* ── Blood Type ─────────────────────────────────────────────────── */}
+      <div className="sim-field">
+        <label htmlFor="blood-type-select">Blood Type</label>
+        <select
+          id="blood-type-select"
+          className="sim-select"
+          value={bloodType}
+          onChange={(e) => setBloodType(e.target.value)}
+          disabled={isRunning}
+        >
+          <option value="Unknown">Unknown</option>
+          <option value="A+">A+</option>
+          <option value="A-">A-</option>
+          <option value="B+">B+</option>
+          <option value="B-">B-</option>
+          <option value="O+">O+</option>
+          <option value="O-">O-</option>
+          <option value="AB+">AB+</option>
+          <option value="AB-">AB-</option>
+        </select>
+      </div>
+
+      {/* ── Paramedic Notes ───────────────────────────────────────────── */}
+      <div className="sim-field">
+        <label htmlFor="notes-input">Paramedic Notes</label>
+        <textarea
+          id="notes-input"
+          className="sim-textarea"
+          rows={2}
+          placeholder="e.g. Patient unconscious, severe bleeding..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          disabled={isRunning}
+        />
       </div>
 
       {/* ── Speed multiplier ──────────────────────────────────────────── */}

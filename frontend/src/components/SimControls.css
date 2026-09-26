@@ -101,6 +101,27 @@
   cursor: pointer;
 }
 
+.sim-textarea {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.07);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.sim-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sim-textarea::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+
+
 .sim-slider-value {
   font-size: 13px;
   font-weight: 700;

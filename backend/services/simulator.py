@@ -232,10 +232,28 @@ class AmbulanceSimulation:
         self.severity = severity
         self.speed_multiplier = speed_multiplier  # extra factor for demo speed-up
 
-        # Parse route data
+        # Parse route data.
+        #
+        # Two coordinate arrays come from the backend:
+        #   coords      — geometry-expanded (lots of intermediate curve points).
+        #                 Used ONLY for the map polyline display.
+        #   node_coords — one (lat, lng) per graph NODE, exactly len(segments)+1 entries.
+        #                 Used for simulator movement (_build_segments).
+        #
+        # CRITICAL: _build_segments must use node_coords, NOT coords.
+        # coords has many more entries than segments (e.g. 251 coords vs 86 segments).
+        # If we passed coords to _build_segments, it would only iterate over the first
+        # len(segments) entries (86 of 251), think the route is done, and trigger
+        # ARRIVED halfway through — exactly the "teleport" bug the user reported.
         self.coords: list[tuple[float, float]] = [tuple(c) for c in route_data["coords"]]
+
+        # node_coords: the node-level coords used for movement simulation.
+        # Falls back to coords if node_coords is absent (older route_data format).
+        raw_node_coords = route_data.get("node_coords") or route_data["coords"]
+        self._node_coords: list[tuple[float, float]] = [tuple(c) for c in raw_node_coords]
+
         self.node_path: list[int] = route_data["node_path"]
-        self.segments: list[SimSegment] = _build_segments(self.coords, route_data["segments"])
+        self.segments: list[SimSegment] = _build_segments(self._node_coords, route_data["segments"])
         self.signal_nodes_on_route: list[int] = route_data.get("signal_nodes_on_route", [])
 
         # Cursor state

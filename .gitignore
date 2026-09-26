@@ -6,6 +6,10 @@ __pycache__/
 .Python
 backend/venv/
 backend/.env
+.env
+*.env
+!.env.example
+!backend/.env.example
 backend/*.egg-info/
 backend/.pytest_cache/
 backend/htmlcov/

@@ -226,31 +226,89 @@ class PatientVitals:
     resources_needed: list[str]
 
 
-def _generate_vitals(ambulance_id: str, severity: str) -> PatientVitals:
+def _compute_resources(emergency_type: str, severity: str) -> list[str]:
     """
-    Generate realistic but simulated patient vitals based on severity.
+    Smart rules-based engine: determines required hospital resources from
+    the emergency type and severity. Called during alert creation so the
+    hospital knows exactly what to prepare before the ambulance arrives.
+    """
+    et = emergency_type.lower()
+    resources = []
 
-    Using ambulance_id as the random seed makes vitals deterministic
-    per ambulance — the same AMB-001 always produces the same patient
-    profile, which makes demo scenarios repeatable.
+    # ── Type-specific resources ──────────────────────────────────────────────
+    if any(k in et for k in ["heart", "cardiac", "stemi", "myocardial"]):
+        resources += ["Cath Lab", "Cardiologist on Call", "ECG Team Ready"]
+        if severity == "critical":
+            resources += ["ICU Bed", "Defibrillator Standby"]
 
-    Severity levels map to rough clinical states:
-      critical  — life-threatening (major trauma, STEMI, stroke)
-      serious   — significant injury, unstable but not immediately dying
-      moderate  — injured but stable
+    elif any(k in et for k in ["stroke", "neuro", "brain", "cerebral"]):
+        resources += ["CT Scanner (Priority)", "Neurologist on Call", "Stroke Team"]
+        if severity == "critical":
+            resources += ["ICU Bed", "Neurosurgery on Call"]
+
+    elif any(k in et for k in ["accident", "trauma", "rta", "fall", "crash", "injury"]):
+        resources += ["Trauma Resuscitation Bay", "General Surgeon on Call"]
+        if severity == "critical":
+            resources += ["CT Scanner", "Blood Bank (O-Negative Ready)", "Ventilator"]
+        elif severity == "serious":
+            resources += ["Orthopaedics on Call", "X-Ray"]
+
+    elif any(k in et for k in ["burn", "fire"]):
+        resources += ["Burns Unit", "Plastic Surgeon", "IV Fluids Ready"]
+        if severity == "critical":
+            resources += ["ICU Bed", "Airway Management Team"]
+
+    elif any(k in et for k in ["respiratory", "breath", "asthma", "lung", "copd"]):
+        resources += ["Ventilator", "Pulmonologist", "Nebuliser Ready"]
+        if severity == "critical":
+            resources += ["ICU Bed"]
+
+    elif any(k in et for k in ["poisoning", "overdose", "toxic"]):
+        resources += ["Gastric Lavage Setup", "Toxicology on Call", "Activated Charcoal"]
+        if severity == "critical":
+            resources += ["ICU Bed", "Dialysis on Standby"]
+
+    elif any(k in et for k in ["obstetric", "deliver", "pregnan", "maternal"]):
+        resources += ["Obstetrics Team", "Neonatal ICU", "OT Ready"]
+
+    else:
+        # Generic fallback
+        resources += ["Emergency Physician", "General Assessment Bay"]
+
+    # ── Severity-based additions (always applied) ────────────────────────────
+    if severity == "critical" and "ICU Bed" not in resources:
+        resources.append("ICU Bed")
+
+    if severity in ("critical", "serious") and "Blood Bank" not in str(resources):
+        resources.append("Blood Bank Notified")
+
+    return resources
+
+
+def _generate_vitals(
+    ambulance_id: str,
+    severity: str,
+    emergency_type: str = "Unknown",
+    provided_blood_type: str = "Unknown",
+    notes: str = "",
+) -> PatientVitals:
+    """
+    Generate patient vitals.  Vitals (GCS, HR, etc.) are still seeded from
+    ambulance_id for repeatability in demo scenarios.  Resources are now
+    computed from the real emergency_type provided by the paramedic.
+    Blood type comes from paramedic input (not randomly generated).
     """
     rng = random.Random(hash(ambulance_id) & 0xFFFFFFFF)
 
     if severity == "critical":
-        gcs       = rng.randint(6, 10)
-        spo2      = rng.randint(82, 94)
-        hr        = rng.randint(110, 140)
-        bp_sys    = rng.randint(75, 100)
-        bp_dia    = rng.randint(50, 70)
-        rr        = rng.randint(22, 30)
-        temp_c    = round(rng.uniform(35.5, 37.0), 1)
-        mechanism = rng.choice(["Road Traffic Accident", "Traumatic Fall", "STEMI", "Stroke"])
-        injuries  = rng.sample([
+        gcs    = rng.randint(6, 10)
+        spo2   = rng.randint(82, 94)
+        hr     = rng.randint(110, 140)
+        bp_sys = rng.randint(75, 100)
+        bp_dia = rng.randint(50, 70)
+        rr     = rng.randint(22, 30)
+        temp_c = round(rng.uniform(35.5, 37.0), 1)
+        injuries = rng.sample([
             "Head injury", "Chest trauma", "Abdominal trauma",
             "Pelvic fracture", "Haemothorax", "Suspected internal bleeding",
         ], k=rng.randint(2, 4))
@@ -259,22 +317,16 @@ def _generate_vitals(ambulance_id: str, severity: str) -> PatientVitals:
             "Crystalloid 500ml running", "C-spine immobilisation",
             "Chest seal applied", "Tourniquet applied",
         ], k=rng.randint(2, 4))
-        resources = rng.sample([
-            "Trauma bay", "CT scanner", "Blood bank (O-negative)",
-            "Neurosurgery on call", "Cardiothoracic surgeon standby",
-            "ICU bed", "Ventilator",
-        ], k=rng.randint(3, 5))
 
     elif severity == "serious":
-        gcs       = rng.randint(11, 13)
-        spo2      = rng.randint(90, 95)
-        hr        = rng.randint(95, 120)
-        bp_sys    = rng.randint(95, 120)
-        bp_dia    = rng.randint(60, 80)
-        rr        = rng.randint(18, 24)
-        temp_c    = round(rng.uniform(36.0, 38.5), 1)
-        mechanism = rng.choice(["Road Traffic Accident", "Fall from height", "Assault"])
-        injuries  = rng.sample([
+        gcs    = rng.randint(11, 13)
+        spo2   = rng.randint(90, 95)
+        hr     = rng.randint(95, 120)
+        bp_sys = rng.randint(95, 120)
+        bp_dia = rng.randint(60, 80)
+        rr     = rng.randint(18, 24)
+        temp_c = round(rng.uniform(36.0, 38.5), 1)
+        injuries = rng.sample([
             "Limb fracture", "Laceration requiring surgical repair",
             "Rib fractures", "Suspected spinal injury",
         ], k=rng.randint(1, 3))
@@ -282,38 +334,42 @@ def _generate_vitals(ambulance_id: str, severity: str) -> PatientVitals:
             "IV access established", "Wound dressed",
             "Splint applied", "O2 8L/min mask",
         ], k=rng.randint(1, 3))
-        resources = rng.sample([
-            "X-ray", "Orthopaedics on call", "General surgery",
-            "High-dependency bed",
-        ], k=rng.randint(2, 3))
 
     else:  # moderate
-        gcs       = rng.randint(13, 15)
-        spo2      = rng.randint(94, 99)
-        hr        = rng.randint(70, 100)
-        bp_sys    = rng.randint(110, 140)
-        bp_dia    = rng.randint(65, 90)
-        rr        = rng.randint(14, 20)
-        temp_c    = round(rng.uniform(36.5, 37.5), 1)
-        mechanism = rng.choice(["Road Traffic Accident", "Minor fall", "Medical"])
-        injuries  = rng.sample([
+        gcs    = rng.randint(13, 15)
+        spo2   = rng.randint(94, 99)
+        hr     = rng.randint(70, 100)
+        bp_sys = rng.randint(110, 140)
+        bp_dia = rng.randint(65, 90)
+        rr     = rng.randint(14, 20)
+        temp_c = round(rng.uniform(36.5, 37.5), 1)
+        injuries = rng.sample([
             "Contusions", "Minor lacerations", "Suspected fracture",
         ], k=rng.randint(1, 2))
         treatment = rng.sample([
             "Wound dressed", "Ice pack applied", "Oral analgesia given",
         ], k=rng.randint(1, 2))
-        resources = rng.sample([
-            "Minor injuries area", "X-ray",
-        ], k=1)
 
-    blood_types = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "unknown"]
-    blood_type = rng.choice(blood_types)
+    # Blood type comes from paramedic; only randomise if not provided
+    blood_type = (
+        provided_blood_type
+        if provided_blood_type and provided_blood_type.lower() not in ("unknown", "")
+        else rng.choice(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Unknown"])
+    )
+
+    # Smart rules-based resources
+    resources = _compute_resources(emergency_type, severity)
 
     return PatientVitals(
         gcs=gcs, spo2=spo2, hr=hr, bp_sys=bp_sys, bp_dia=bp_dia,
-        rr=rr, temp_c=temp_c, mechanism=mechanism, injuries=injuries,
-        treatment=treatment, blood_type=blood_type, resources_needed=resources,
+        rr=rr, temp_c=temp_c,
+        mechanism=emergency_type,
+        injuries=injuries,
+        treatment=treatment,
+        blood_type=blood_type,
+        resources_needed=resources,
     )
+
 
 
 # ============================================================================
@@ -337,6 +393,11 @@ class HospitalAlert:
     hospital_name: str
     severity: str
     status: AlertStatus
+
+    # Dynamic paramedic inputs
+    emergency_type: str
+    blood_type: str
+    notes: str
 
     # Patient info
     vitals: PatientVitals
@@ -375,53 +436,66 @@ ARRIVAL_DISTANCE_M     = 50.0      # Consider arrived at 50m
 def _dispatch_notification(alert: HospitalAlert, event: str) -> dict:
     """
     Dispatch a notification for an alert event.
-
-    Currently: logs to console + stores in alert.notifications.
-    Extension point: add Twilio SMS here by reading TWILIO_* env vars.
-
-    Returns a dict describing what was dispatched.
+    SMS messages now include dynamic patient context (emergency type, blood
+    type, vitals, resources) provided by the paramedic at dispatch time.
     """
     v = alert.vitals
+    resources_str = ", ".join(v.resources_needed) if v.resources_needed else "Standard assessment"
+    notes_str = f" Notes: {alert.notes}." if alert.notes else ""
+
     if event == "initial":
         msg = (
-            f"[PRE-ALERT] Ambulance {alert.ambulance_id} incoming to "
-            f"{alert.hospital_name}. "
-            f"Severity: {alert.severity.upper()}. "
-            f"ETA: {alert.current_eta_s:.0f}s ({alert.current_eta_s/60:.1f} min). "
-            f"Patient: GCS {v.gcs}, SpO2 {v.spo2}%, HR {v.hr}, "
-            f"BP {v.bp_sys}/{v.bp_dia}, Mechanism: {v.mechanism}. "
-            f"Resources needed: {', '.join(v.resources_needed)}."
+            f"[PRE-ALERT] {alert.hospital_name}\n"
+            f"Ambulance {alert.ambulance_id} incoming.\n"
+            f"ETA: {alert.current_eta_s/60:.1f} min | Severity: {alert.severity.upper()}\n"
+            f"Emergency: {alert.emergency_type} | Blood: {v.blood_type}\n"
+            f"Vitals: GCS {v.gcs}, SpO2 {v.spo2}%, HR {v.hr}, BP {v.bp_sys}/{v.bp_dia}\n"
+            f"PREPARE: {resources_str}.{notes_str}"
         )
     elif event == "update":
         msg = (
-            f"[ETA UPDATE] Ambulance {alert.ambulance_id} to {alert.hospital_name}. "
-            f"Updated ETA: {alert.current_eta_s:.0f}s ({alert.current_eta_s/60:.1f} min). "
-            f"Distance: {alert.distance_m:.0f}m."
+            f"[ETA UPDATE] {alert.hospital_name}\n"
+            f"Ambulance {alert.ambulance_id} | {alert.emergency_type} | {alert.severity.upper()}\n"
+            f"ETA: {alert.current_eta_s/60:.1f} min | Distance: {alert.distance_m:.0f}m\n"
+            f"Blood: {v.blood_type} | PREPARE: {resources_str}.{notes_str}"
         )
     else:  # arrival
         msg = (
-            f"[ARRIVAL] Ambulance {alert.ambulance_id} has arrived at "
-            f"{alert.hospital_name}."
+            f"[ARRIVED] {alert.hospital_name}\n"
+            f"Ambulance {alert.ambulance_id} has arrived.\n"
+            f"Patient: {alert.emergency_type} | {alert.severity.upper()} | Blood: {v.blood_type}\n"
+            f"GCS {v.gcs}, SpO2 {v.spo2}%, HR {v.hr}, BP {v.bp_sys}/{v.bp_dia}\n"
+            f"Resources ready: {resources_str}."
         )
+
 
     logger.info(msg)
 
-    # --- Twilio SMS drop-in point ---
-    # from twilio.rest import Client as TwilioClient
-    # import os
-    # if os.getenv("TWILIO_ACCOUNT_SID"):
-    #     client = TwilioClient(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
-    #     client.messages.create(
-    #         body=msg,
-    #         from_=os.getenv("TWILIO_PHONE_FROM"),
-    #         to=hospital.emergency_phone,
-    #     )
+    # --- Twilio SMS ---
+    import os
+    try:
+        from twilio.rest import Client as TwilioClient
+        sid      = os.getenv("TWILIO_ACCOUNT_SID")
+        token    = os.getenv("TWILIO_AUTH_TOKEN")
+        from_num = os.getenv("TWILIO_FROM_NUMBER")
+        to_num   = os.getenv("HOSPITAL_PHONE_NUMBER") or _HOSPITAL_INDEX.get(alert.hospital_id, HOSPITAL_REGISTRY[0]).emergency_phone
+
+        logger.warning(f"[SMS DEBUG] sid={bool(sid)} token={bool(token)} from={from_num} to={to_num}")
+
+        if sid and token and from_num and to_num:
+            client = TwilioClient(sid, token)
+            message = client.messages.create(body=msg, from_=from_num, to=to_num)
+            logger.warning(f"[SMS SENT] SID={message.sid} Status={message.status} to={to_num}")
+        else:
+            logger.error(f"[SMS SKIP] Missing credentials — sid={bool(sid)} token={bool(token)} from={bool(from_num)} to={bool(to_num)}")
+    except Exception as e:
+        logger.error(f"[SMS ERROR] {type(e).__name__}: {e}")
 
     record = {
         "event": event,
         "timestamp": time.time(),
         "message": msg,
-        "channel": "log",          # "log" | "sms" | "email" once Twilio is wired
+        "channel": "sms" if os.getenv("TWILIO_ACCOUNT_SID") else "log",
     }
     alert.notifications.append(record)
     return record
@@ -475,6 +549,9 @@ class AlertManager:
         self,
         ambulance_id: str,
         severity: str,
+        emergency_type: str,
+        blood_type: str,
+        notes: str,
         hospital_id: str,
         hospital_lat: float,
         hospital_lng: float,
@@ -502,7 +579,10 @@ class AlertManager:
 
         # ── First alert ──────────────────────────────────────────────────────
         if "initial" not in fired and dist_m <= FIRST_ALERT_DISTANCE_M:
-            alert = self._create_alert(ambulance_id, severity, hospital_id, eta_s, dist_m)
+            alert = self._create_alert(
+                ambulance_id, severity, emergency_type, blood_type, notes,
+                hospital_id, eta_s, dist_m
+            )
             notif = _dispatch_notification(alert, "initial")
             alert.status = AlertStatus.SENT
             alert.dispatched_at = time.time()
@@ -567,6 +647,9 @@ class AlertManager:
         self,
         ambulance_id: str,
         severity: str,
+        emergency_type: str,
+        blood_type: str,
+        notes: str,
         hospital_id: str,
         eta_s: float,
         distance_m: float,
@@ -578,7 +661,12 @@ class AlertManager:
             hospital = HOSPITAL_REGISTRY[0]
 
         alert_id = str(uuid.uuid4())[:8]
-        vitals = _generate_vitals(ambulance_id, severity)
+        vitals = _generate_vitals(
+            ambulance_id, severity,
+            emergency_type=emergency_type,
+            provided_blood_type=blood_type,
+            notes=notes,
+        )
 
         alert = HospitalAlert(
             alert_id=alert_id,
@@ -587,6 +675,9 @@ class AlertManager:
             hospital_name=hospital.name,
             severity=severity,
             status=AlertStatus.PENDING,
+            emergency_type=emergency_type,
+            blood_type=blood_type,
+            notes=notes,
             vitals=vitals,
             created_at=time.time(),
             dispatched_at=None,

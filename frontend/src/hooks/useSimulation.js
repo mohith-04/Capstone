@@ -77,14 +77,13 @@ export function useSimulation() {
   const start = useCallback(async ({
     ambulanceId   = 'AMB-001',
     hospitalId    = 'govt-gen-hosp',
-    // endLat/endLng: the hospital's actual coordinates.
-    // These are passed in from SimControls (which looks them up from the hospital registry).
-    // They must NOT default to DEFAULT_END here — that was the bug causing the route
-    // to always go to Kanaka Durga Temple instead of the selected hospital.
     endLat        = null,
     endLng        = null,
     severity      = 'critical',
     speedMultiplier = 5,
+    emergencyType = 'Unknown',
+    bloodType     = 'Unknown',
+    notes         = '',
   } = {}) => {
     // Guard: don't start if already running
     if (simState === 'running' || simState === 'starting') return
@@ -105,9 +104,6 @@ export function useSimulation() {
     ambulanceIdRef.current = ambulanceId
 
     try {
-      // Step 1: Create simulation on backend + get initial route.
-      // endLat/endLng are the destination (selected hospital's coordinates).
-      // DEFAULT_START is fixed: Benz Circle, Vijayawada.
       const data = await startSimulation({
         ambulanceId,
         startLat: DEFAULT_START.lat,
@@ -118,6 +114,9 @@ export function useSimulation() {
         hospitalId,
         speedMultiplier,
         tickIntervalS: 0.5,
+        emergencyType,
+        bloodType,
+        notes,
       })
 
       setRoute(data.route)

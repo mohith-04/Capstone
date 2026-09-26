@@ -219,10 +219,13 @@ export default function App() {
     sim.start({
       ambulanceId:     'AMB-001',
       hospitalId:      params.hospitalId,
-      endLat:          params.endLat,   // hospital's actual latitude
-      endLng:          params.endLng,   // hospital's actual longitude
+      endLat:          params.endLat,
+      endLng:          params.endLng,
       severity:        params.severity,
       speedMultiplier: params.speedMultiplier,
+      emergencyType:   params.emergencyType,
+      bloodType:       params.bloodType,
+      notes:           params.notes,
     })
   }
 

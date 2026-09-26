@@ -112,6 +112,10 @@ class StartSimRequest(BaseModel):
             "Use GET /hospitals to see all available hospital IDs."
         ),
     )
+    # New paramedic input fields for dynamic alerts
+    emergency_type: str = Field("Unknown", description="Type of emergency (e.g. Heart Attack, Accident)")
+    blood_type: str = Field("Unknown", description="Blood Type")
+    notes: str = Field("", description="Paramedic notes")
     speed_multiplier: float = Field(
         3.0, ge=0.5, le=20.0,
         description=(
@@ -163,10 +167,30 @@ async def start_simulation(req: StartSimRequest):
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    # Build response matching the /route endpoint format
+    # Build response matching the /route endpoint format.
+    #
+    # IMPORTANT: two separate coordinate arrays are maintained:
+    #
+    #   coords      — geometry-expanded (includes intermediate curve points from
+    #                 each edge's Shapely LineString).  Used by the frontend map
+    #                 to draw the polyline following actual road shapes.
+    #                 Length: many more points than segments (e.g. 251 vs 86).
+    #
+    #   node_coords — one (lat, lng) per graph NODE only (len = len(node_path)).
+    #                 Used by the simulator's _build_segments(), which expects
+    #                 exactly len(segments)+1 coordinate pairs (one per edge
+    #                 endpoint).  Using the full geometry coords here would
+    #                 cause _build_segments to only traverse the first
+    #                 len(segments) geometry sub-points and trigger early arrival.
+    node_coords = [
+        (G.nodes[n]["y"], G.nodes[n]["x"])
+        for n in route_result.node_path
+    ]
+
     route_data = {
-        "coords": route_result.coords,
-        "node_path": route_result.node_path,
+        "coords":       route_result.coords,   # geometry-expanded (for map polyline)
+        "node_coords":  node_coords,           # node-level only (for simulator movement)
+        "node_path":    route_result.node_path,
         "segments": [
             {
                 "u": s.u, "v": s.v, "k": s.k,
@@ -186,6 +210,7 @@ async def start_simulation(req: StartSimRequest):
         "estimated_time_s": route_result.total_time_s,
         "total_distance_m": route_result.total_distance_m,
     }
+
 
     # Create and register the simulation
     sim = AmbulanceSimulation(
@@ -223,6 +248,9 @@ async def start_simulation(req: StartSimRequest):
         "lat": hospital.lat,
         "lng": hospital.lng,
         "severity": req.severity,
+        "emergency_type": req.emergency_type,
+        "blood_type": req.blood_type,
+        "notes": req.notes,
     }
 
     return {
@@ -465,6 +493,9 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                 alert_event = get_alert_manager().check_and_alert(
                     ambulance_id=sim.ambulance_id,
                     severity=hosp_meta["severity"],
+                    emergency_type=hosp_meta["emergency_type"],
+                    blood_type=hosp_meta["blood_type"],
+                    notes=hosp_meta["notes"],
                     hospital_id=hosp_meta["hospital_id"],
                     hospital_lat=hosp_meta["lat"],
                     hospital_lng=hosp_meta["lng"],
