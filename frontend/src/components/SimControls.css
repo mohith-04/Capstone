@@ -23,7 +23,7 @@
 .sim-state-badge--idle {
   background: rgba(139,148,158,0.12);
   border: 1px solid rgba(139,148,158,0.3);
-  color: #8b949e;
+  color: var(--color-text-secondary);
 }
 
 .sim-state-badge--starting {
@@ -105,8 +105,8 @@
   width: 100%;
   padding: 6px 10px;
   border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(0,0,0,0.15);
+  background: rgba(0,0,0,0.07);
   color: var(--color-text-primary);
   font-size: 13px;
   resize: vertical;
@@ -118,8 +118,105 @@
   cursor: not-allowed;
 }
 .sim-textarea::placeholder {
-  color: rgba(255,255,255,0.35);
+  color: rgba(0,0,0,0.35);
 }
+
+.sim-vitals-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sim-vitals-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.14);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.sim-vitals-toggle:hover:not(:disabled) {
+  background: rgba(0,0,0,0.1);
+}
+
+.sim-vitals-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sim-vitals-toggle-hint {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+.sim-vitals-hint {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+.sim-vitals-error {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.4);
+  color: #fca5a5;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+.sim-vitals-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sim-vitals-item span {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sim-vitals-input {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.15);
+  background: rgba(0,0,0,0.07);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.sim-vitals-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Remove number spinner arrows */
+.sim-vitals-input::-webkit-outer-spin-button,
+.sim-vitals-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 
 
 .sim-slider-value {

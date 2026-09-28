@@ -47,6 +47,7 @@ from dataclasses import asdict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, status
 from pydantic import BaseModel, Field
+from typing import Optional
 
 import networkx as nx
 
@@ -116,6 +117,13 @@ class StartSimRequest(BaseModel):
     emergency_type: str = Field("Unknown", description="Type of emergency (e.g. Heart Attack, Accident)")
     blood_type: str = Field("Unknown", description="Blood Type")
     notes: str = Field("", description="Paramedic notes")
+    # Vitals recorded by paramedic on scene
+    gcs: Optional[int] = Field(None, ge=3, le=15, description="Glasgow Coma Scale (3-15)")
+    spo2: Optional[int] = Field(None, ge=50, le=100, description="SpO2 oxygen saturation %")
+    hr: Optional[int] = Field(None, ge=20, le=300, description="Heart rate (bpm)")
+    bp_sys: Optional[int] = Field(None, ge=40, le=300, description="Systolic blood pressure (mmHg)")
+    bp_dia: Optional[int] = Field(None, ge=20, le=200, description="Diastolic blood pressure (mmHg)")
+
     speed_multiplier: float = Field(
         3.0, ge=0.5, le=20.0,
         description=(
@@ -251,6 +259,11 @@ async def start_simulation(req: StartSimRequest):
         "emergency_type": req.emergency_type,
         "blood_type": req.blood_type,
         "notes": req.notes,
+        "gcs": req.gcs,
+        "spo2": req.spo2,
+        "hr": req.hr,
+        "bp_sys": req.bp_sys,
+        "bp_dia": req.bp_dia,
     }
 
     return {
@@ -502,6 +515,11 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                     amb_lat=ping.lat,
                     amb_lng=ping.lng,
                     eta_s=ping.eta_seconds,
+                    provided_gcs=hosp_meta.get("gcs"),
+                    provided_spo2=hosp_meta.get("spo2"),
+                    provided_hr=hosp_meta.get("hr"),
+                    provided_bp_sys=hosp_meta.get("bp_sys"),
+                    provided_bp_dia=hosp_meta.get("bp_dia"),
                 )
                 if alert_event:
                     # Push a dedicated "alert" message so the frontend can

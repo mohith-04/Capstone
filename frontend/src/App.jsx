@@ -167,16 +167,25 @@ export default function App() {
 
   // Fire toasts for new alert events
   useEffect(() => {
-    const newAlerts = sim.alerts.slice(prevAlertCount.current)
-    newAlerts.forEach((alert) => {
-      const toastCfg = alertToToast(
-        alert.event,
-        alert.hospital_name,
-        alert.eta_s,
-        alert.distance_m,
-      )
-      addToast(toastCfg)
-    })
+    // sim.alerts is prepended (newest first). To get the newly added alerts,
+    // we take the first N items where N is the difference in length.
+    const diff = sim.alerts.length - prevAlertCount.current
+    if (diff > 0) {
+      const newAlerts = sim.alerts.slice(0, diff)
+      // Reverse so they toast in chronological order if multiple arrived at once
+      newAlerts.reverse().forEach((alert) => {
+        // Only toast the initial pre-alert (2km) and arrival (50m) to avoid double notifications
+        if (alert.event === 'update') return
+
+        const toastCfg = alertToToast(
+          alert.event,
+          alert.hospital_name,
+          alert.eta_s,
+          alert.distance_m
+        )
+        addToast(toastCfg)
+      })
+    }
     prevAlertCount.current = sim.alerts.length
   }, [sim.alerts.length, sim.alerts, addToast])
 
@@ -226,6 +235,11 @@ export default function App() {
       emergencyType:   params.emergencyType,
       bloodType:       params.bloodType,
       notes:           params.notes,
+      gcs:             params.gcs,
+      spo2:            params.spo2,
+      hr:              params.hr,
+      bpSys:           params.bpSys,
+      bpDia:           params.bpDia,
     })
   }
 
@@ -243,7 +257,6 @@ export default function App() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="app-header">
         <div className="app-header__left">
-          <span className="app-header__icon">🚑</span>
           <div>
             <h1 className="app-header__title">AI Ambulance Route Optimization</h1>
             <p className="app-header__sub">

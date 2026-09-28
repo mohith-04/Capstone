@@ -59,7 +59,7 @@
 
 .app-map-area {
   flex: 1;
-  background: #0d1117;
+  background: var(--color-bg);
   position: relative;
   overflow: hidden;
   min-width: 0;   /* prevent flex blowout */
@@ -189,7 +189,7 @@
 }
 
 .info-table code {
-  background: #21262d;
+  background: #f0f0f0;
   padding: 1px 6px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;

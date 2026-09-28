@@ -10,15 +10,17 @@
 }
 
 :root {
-  --color-bg: #0d1117;
-  --color-surface: #161b22;
-  --color-border: #30363d;
-  --color-text-primary: #e6edf3;
-  --color-text-secondary: #8b949e;
-  --color-accent-green: #3fb950;
-  --color-accent-red: #f85149;
-  --color-accent-blue: #58a6ff;
-  --color-accent-yellow: #d29922;
+  --color-bg: #f9f9f7; /* Creamy white */
+  --color-surface: #ffffff; /* Pure white for cards/panels */
+  --color-border: #e2e2e2;
+  --color-text-primary: #111111; /* Near black */
+  --color-text-secondary: #555555;
+  
+  /* Softer but distinct accents for light theme */
+  --color-accent-green: #2da44e;
+  --color-accent-red: #cf222e;
+  --color-accent-blue: #0969da;
+  --color-accent-yellow: #bf8700;
 
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 14px;
@@ -39,5 +41,5 @@ body {
 /* Leaflet CSS is imported in main.jsx; override its z-index here so
  * our UI panels always appear above the map tiles. */
 .leaflet-container {
-  background: #1c2430;
+  background: #f4f3f0;
 }

@@ -123,6 +123,14 @@ export async function startSimulation({
   hospitalId = 'govt-gen-hosp',
   speedMultiplier = 5.0,
   tickIntervalS = 0.5,
+  emergencyType = 'Unknown',
+  bloodType = 'Unknown',
+  notes = '',
+  gcs = null,
+  spo2 = null,
+  hr = null,
+  bpSys = null,
+  bpDia = null,
 }) {
   return _post('/sim/start', {
     ambulance_id: ambulanceId,
@@ -134,8 +142,17 @@ export async function startSimulation({
     hospital_id: hospitalId,
     speed_multiplier: speedMultiplier,
     tick_interval_s: tickIntervalS,
+    emergency_type: emergencyType,
+    blood_type: bloodType,
+    notes,
+    gcs,
+    spo2,
+    hr,
+    bp_sys: bpSys,
+    bp_dia: bpDia,
   })
 }
+
 
 /**
  * Inject congestion near a point and reroute a running simulation.

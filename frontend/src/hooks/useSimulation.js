@@ -84,6 +84,11 @@ export function useSimulation() {
     emergencyType = 'Unknown',
     bloodType     = 'Unknown',
     notes         = '',
+    gcs           = null,
+    spo2          = null,
+    hr            = null,
+    bpSys         = null,
+    bpDia         = null,
   } = {}) => {
     // Guard: don't start if already running
     if (simState === 'running' || simState === 'starting') return
@@ -117,6 +122,11 @@ export function useSimulation() {
         emergencyType,
         bloodType,
         notes,
+        gcs,
+        spo2,
+        hr,
+        bpSys,
+        bpDia,
       })
 
       setRoute(data.route)

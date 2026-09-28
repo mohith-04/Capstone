@@ -49,7 +49,11 @@ const SIGNAL_COLORS = {
 
 const AMBULANCE_ICON = L.divIcon({
   className: '',
-  html: '<div class="ambulance-icon">🚑</div>',
+  html: `<div class="ambulance-icon">
+    <div style="background: white; border: 2px solid #cf222e; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cf222e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle><line x1="8" y1="9" x2="8" y2="9"></line></svg>
+    </div>
+  </div>`,
   iconSize: [36, 36],
   iconAnchor: [18, 18],
   popupAnchor: [0, -20],
@@ -57,7 +61,11 @@ const AMBULANCE_ICON = L.divIcon({
 
 const HOSPITAL_ICON = L.divIcon({
   className: '',
-  html: '<div class="hospital-icon">🏥</div>',
+  html: `<div class="hospital-icon">
+    <div style="background: #2da44e; border: 2px solid white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+    </div>
+  </div>`,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
   popupAnchor: [0, -18],
@@ -65,10 +73,12 @@ const HOSPITAL_ICON = L.divIcon({
 
 const START_ICON = L.divIcon({
   className: '',
-  html: '<div class="start-icon">🟢</div>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -14],
+  html: `<div class="start-icon">
+    <div style="background: #0969da; border: 2px solid white; border-radius: 50%; width: 20px; height: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+  </div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+  popupAnchor: [0, -12],
 })
 
 // ── MapUpdater — smooth-follow ambulance position ─────────────────────────────
@@ -102,11 +112,15 @@ function MapLegend() {
         </div>
       ))}
       <div className="map-legend__divider" />
-      {[['🟢', 'Start'], ['🏥', 'Hospital'], ['🚑', 'Ambulance']].map(([icon, label]) => (
-        <div key={label} className="map-legend__item">
-          <span style={{ fontSize: 14 }}>{icon}</span> {label}
-        </div>
-      ))}
+      <div className="map-legend__item">
+        <div style={{width: 12, height: 12, borderRadius: '50%', background: '#0969da', border: '1px solid white'}}></div> Start
+      </div>
+      <div className="map-legend__item">
+        <div style={{width: 12, height: 12, borderRadius: '50%', background: '#2da44e', border: '1px solid white'}}></div> Hospital
+      </div>
+      <div className="map-legend__item">
+        <div style={{width: 12, height: 12, borderRadius: '50%', background: 'white', border: '2px solid #cf222e'}}></div> Ambulance
+      </div>
     </div>
   )
 }
@@ -195,7 +209,7 @@ export default function MapView({ route, telemetry, signals, hospital, simState 
           <Marker position={[DEFAULT_START.lat, DEFAULT_START.lng]} icon={START_ICON}>
             <Popup>
               <div className="map-popup">
-                <div className="map-popup__title">🟢 Start Point</div>
+                <div className="map-popup__title">Start Point</div>
                 <div className="map-popup__row">Location <span>Benz Circle, Vijayawada</span></div>
               </div>
             </Popup>
@@ -231,7 +245,7 @@ export default function MapView({ route, telemetry, signals, hospital, simState 
           <Marker position={ambPosition} icon={AMBULANCE_ICON}>
             <Popup>
               <div className="map-popup">
-                <div className="map-popup__title">🚑 Ambulance</div>
+                <div className="map-popup__title">Ambulance</div>
                 <div className="map-popup__row">Speed <span>{Math.round(telemetry.speed_kmh)} km/h</span></div>
                 <div className="map-popup__row">ETA <span>{fmtEta(telemetry.eta_seconds)}</span></div>
                 <div className="map-popup__row">Road <span>{telemetry.current_road_name || 'Unknown'}</span></div>
@@ -246,7 +260,7 @@ export default function MapView({ route, telemetry, signals, hospital, simState 
           <Marker position={[hospital.lat, hospital.lng]} icon={HOSPITAL_ICON}>
             <Popup>
               <div className="map-popup">
-                <div className="map-popup__title">🏥 {hospital.short_name || hospital.name}</div>
+                <div className="map-popup__title">{hospital.short_name || hospital.name}</div>
                 <div className="map-popup__row">Type <span>{hospital.type?.replace(/_/g, ' ')}</span></div>
                 <div className="map-popup__row">Trauma bays <span>{hospital.trauma_bays}</span></div>
                 <div className="map-popup__row">ICU beds <span>{hospital.icu_beds}</span></div>

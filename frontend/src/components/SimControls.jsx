@@ -41,6 +41,13 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
   const [emergencyType,   setEmergencyType]   = useState('Road Traffic Accident')
   const [bloodType,       setBloodType]       = useState('Unknown')
   const [notes,           setNotes]           = useState('')
+  // Paramedic-recorded vitals (collapsed by default)
+  const [showVitals, setShowVitals] = useState(false)
+  const [gcs,     setGcs]     = useState('')
+  const [spo2,    setSpo2]    = useState('')
+  const [hr,      setHr]      = useState('')
+  const [bpSys,   setBpSys]   = useState('')
+  const [bpDia,   setBpDia]   = useState('')
 
   // Load hospital registry once on mount
   useEffect(() => {
@@ -61,12 +68,44 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
   // Look up the selected hospital's full record (we need its lat/lng for routing)
   const selectedHospital = hospitals.find((h) => h.id === hospitalId) || null
 
+  const [vitalsError, setVitalsError] = useState('')
+
   function handleStart() {
     if (!isIdle) return
     if (!selectedHospital) {
       console.warn('[SimControls] No hospital selected — cannot determine route endpoint')
       return
     }
+
+    // Validate vitals ranges before sending to API
+    const errors = []
+    if (gcs !== '') {
+      const v = Number(gcs)
+      if (isNaN(v) || v < 3 || v > 15) errors.push('GCS must be between 3 and 15')
+    }
+    if (spo2 !== '') {
+      const v = Number(spo2)
+      if (isNaN(v) || v < 50 || v > 100) errors.push('SpO₂ must be between 50% and 100%')
+    }
+    if (hr !== '') {
+      const v = Number(hr)
+      if (isNaN(v) || v < 20 || v > 300) errors.push('HR must be between 20 and 300 bpm')
+    }
+    if (bpSys !== '') {
+      const v = Number(bpSys)
+      if (isNaN(v) || v < 40 || v > 300) errors.push('BP Systolic must be between 40 and 300 mmHg')
+    }
+    if (bpDia !== '') {
+      const v = Number(bpDia)
+      if (isNaN(v) || v < 20 || v > 200) errors.push('BP Diastolic must be between 20 and 200 mmHg')
+    }
+
+    if (errors.length > 0) {
+      setVitalsError(errors.join(' · '))
+      return
+    }
+    setVitalsError('')
+
     onStart({
       hospitalId,
       endLat: selectedHospital.lat,
@@ -76,8 +115,15 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
       emergencyType,
       bloodType,
       notes,
+      // Parse vitals — send null if field is empty so backend uses severity-based defaults
+      gcs:    gcs    !== '' ? Number(gcs)    : null,
+      spo2:   spo2   !== '' ? Number(spo2)   : null,
+      hr:     hr     !== '' ? Number(hr)     : null,
+      bpSys:  bpSys  !== '' ? Number(bpSys)  : null,
+      bpDia:  bpDia  !== '' ? Number(bpDia)  : null,
     })
   }
+
 
   async function handleReset() {
     // Reset backend state across all three modules
@@ -175,6 +221,63 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
           <option value="AB+">AB+</option>
           <option value="AB-">AB-</option>
         </select>
+      </div>
+
+      {/* ── Patient Vitals (collapsible) ────────────────────────────────── */}
+      <div className="sim-field">
+        <button
+          type="button"
+          className="sim-vitals-toggle"
+          onClick={() => {
+            const next = !showVitals
+            setShowVitals(next)
+            // Clear values when hiding so they don't silently persist
+            if (!next) { setGcs(''); setSpo2(''); setHr(''); setBpSys(''); setBpDia(''); setVitalsError('') }
+          }}
+          disabled={isRunning}
+        >
+          <span>{showVitals ? '▾' : '▸'}</span>
+          {showVitals ? 'Hide Patient Vitals' : '＋ Add Patient Vitals'}
+          {!showVitals && <span className="sim-vitals-toggle-hint">sent as N/A if skipped</span>}
+        </button>
+
+        {showVitals && (
+          <>
+            <div className="sim-vitals-grid">
+              <div className="sim-vitals-item">
+                <span>GCS (3–15)</span>
+                <input type="number" min="3" max="15" placeholder="unknown" className="sim-vitals-input"
+                  value={gcs} onChange={e => { setGcs(e.target.value); setVitalsError('') }} disabled={isRunning} />
+              </div>
+              <div className="sim-vitals-item">
+                <span>SpO₂ %</span>
+                <input type="number" min="50" max="100" placeholder="unknown" className="sim-vitals-input"
+                  value={spo2} onChange={e => { setSpo2(e.target.value); setVitalsError('') }} disabled={isRunning} />
+              </div>
+              <div className="sim-vitals-item">
+                <span>HR (bpm)</span>
+                <input type="number" min="20" max="300" placeholder="unknown" className="sim-vitals-input"
+                  value={hr} onChange={e => { setHr(e.target.value); setVitalsError('') }} disabled={isRunning} />
+              </div>
+              <div className="sim-vitals-item">
+                <span>BP Sys (mmHg)</span>
+                <input type="number" min="40" max="300" placeholder="unknown" className="sim-vitals-input"
+                  value={bpSys} onChange={e => { setBpSys(e.target.value); setVitalsError('') }} disabled={isRunning} />
+              </div>
+              <div className="sim-vitals-item">
+                <span>BP Dia (mmHg)</span>
+                <input type="number" min="20" max="200" placeholder="unknown" className="sim-vitals-input"
+                  value={bpDia} onChange={e => { setBpDia(e.target.value); setVitalsError('') }} disabled={isRunning} />
+              </div>
+            </div>
+            <p className="sim-vitals-hint">Leave any unknown field blank — it will be marked as N/A in the alert.</p>
+            {vitalsError && (
+              <div className="sim-vitals-error">
+                ⚠ {vitalsError}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* ── Paramedic Notes ───────────────────────────────────────────── */}

@@ -208,13 +208,13 @@ class PatientVitals:
     Reference: AIIMS Advanced Trauma Life Support Manual, 10th Ed.
     """
     # Signs / vitals
-    gcs: int              # Glasgow Coma Scale 3–15 (15 = normal, <8 = critical)
-    spo2: int             # Blood oxygen saturation % (normal ≥95%)
-    hr: int               # Heart rate bpm (normal 60–100)
-    bp_sys: int           # Systolic blood pressure mmHg (normal 90–140)
-    bp_dia: int           # Diastolic blood pressure mmHg (normal 60–90)
-    rr: int               # Respiratory rate breaths/min (normal 12–20)
-    temp_c: float         # Body temperature °C (normal 36.5–37.5)
+    gcs: Optional[int]              # Glasgow Coma Scale 3–15 (15 = normal, <8 = critical)
+    spo2: Optional[int]             # Blood oxygen saturation % (normal ≥95%)
+    hr: Optional[int]               # Heart rate bpm (normal 60–100)
+    bp_sys: Optional[int]           # Systolic blood pressure mmHg (normal 90–140)
+    bp_dia: Optional[int]           # Diastolic blood pressure mmHg (normal 60–90)
+    rr: Optional[int]               # Respiratory rate breaths/min (normal 12–20)
+    temp_c: Optional[float]         # Body temperature °C (normal 36.5–37.5)
     # Mechanism and injuries
     mechanism: str        # e.g. "RTA", "fall", "chest pain", "stroke"
     injuries: list[str]   # list of suspected injuries
@@ -226,63 +226,110 @@ class PatientVitals:
     resources_needed: list[str]
 
 
-def _compute_resources(emergency_type: str, severity: str) -> list[str]:
+def _compute_resources(emergency_type: str, severity: str, notes: str = "") -> list[str]:
     """
-    Smart rules-based engine: determines required hospital resources from
-    the emergency type and severity. Called during alert creation so the
-    hospital knows exactly what to prepare before the ambulance arrives.
+    Keyword-based engine: scans BOTH paramedic notes AND emergency type to
+    determine exactly what the hospital needs to prepare. Notes take priority
+    because they contain the real scene description.
     """
-    et = emergency_type.lower()
+    combined = (notes + " " + emergency_type).lower()
     resources = []
 
-    # ── Type-specific resources ──────────────────────────────────────────────
-    if any(k in et for k in ["heart", "cardiac", "stemi", "myocardial"]):
+    # ── Cardiac ───────────────────────────────────────────────────────────────
+    if any(k in combined for k in ["chest pain", "cardiac", "heart", "stemi", "ami",
+                                    "arrhythmia", "palpitation", "heart attack"]):
         resources += ["Cath Lab", "Cardiologist on Call", "ECG Team Ready"]
-        if severity == "critical":
-            resources += ["ICU Bed", "Defibrillator Standby"]
+        if severity == "critical" or any(k in combined for k in ["arrest", "vf", "vt"]):
+            resources += ["Defibrillator Standby", "ACLS Team"]
 
-    elif any(k in et for k in ["stroke", "neuro", "brain", "cerebral"]):
+    # ── Stroke / Neuro ────────────────────────────────────────────────────────
+    if any(k in combined for k in ["stroke", "brain", "neuro", "paralysis", "slurred",
+                                    "facial droop", "seizure", "fit", "cerebral"]):
         resources += ["CT Scanner (Priority)", "Neurologist on Call", "Stroke Team"]
         if severity == "critical":
-            resources += ["ICU Bed", "Neurosurgery on Call"]
+            resources += ["Neurosurgery OT on Standby"]
 
-    elif any(k in et for k in ["accident", "trauma", "rta", "fall", "crash", "injury"]):
+    # ── Head Injury ───────────────────────────────────────────────────────────
+    if any(k in combined for k in ["head injury", "head trauma", "skull", "concussion",
+                                    "unconscious", "loss of consciousness", "loc", "unresponsive"]):
+        if "CT Scanner (Priority)" not in resources:
+            resources += ["CT Head Scan"]
+        if "Neurologist on Call" not in resources:
+            resources += ["Neurosurgeon on Call"]
+        if severity == "critical":
+            resources += ["ICP Monitor"]
+
+    # ── Trauma / Accident ─────────────────────────────────────────────────────
+    if any(k in combined for k in ["accident", "rta", "trauma", "collision", "fall",
+                                    "fracture", "broken bone", "crash", "injury"]):
         resources += ["Trauma Resuscitation Bay", "General Surgeon on Call"]
         if severity == "critical":
-            resources += ["CT Scanner", "Blood Bank (O-Negative Ready)", "Ventilator"]
+            if "CT Scanner (Priority)" not in resources:
+                resources += ["CT Chest/Abdomen"]
+            resources += ["Orthopaedics on Standby"]
         elif severity == "serious":
-            resources += ["Orthopaedics on Call", "X-Ray"]
+            resources += ["Orthopaedics on Call", "X-Ray Ready"]
 
-    elif any(k in et for k in ["burn", "fire"]):
-        resources += ["Burns Unit", "Plastic Surgeon", "IV Fluids Ready"]
+    # ── Bleeding ──────────────────────────────────────────────────────────────
+    if any(k in combined for k in ["bleeding", "hemorrhage", "haemorrhage", "blood loss",
+                                    "wound", "severe bleed", "laceration"]):
+        resources += ["Blood Bank Notified", "IV Access x2", "Transfusion Ready"]
         if severity == "critical":
-            resources += ["ICU Bed", "Airway Management Team"]
+            resources += ["Surgical OT on Standby"]
 
-    elif any(k in et for k in ["respiratory", "breath", "asthma", "lung", "copd"]):
-        resources += ["Ventilator", "Pulmonologist", "Nebuliser Ready"]
+    # ── Respiratory ───────────────────────────────────────────────────────────
+    if any(k in combined for k in ["breath", "respiratory", "asthma", "copd", "wheeze",
+                                    "dyspnea", "shortness of breath", "breathing difficulty",
+                                    "spo2", "oxygen", "lung"]):
+        resources += ["Ventilator Ready", "Pulmonologist on Call", "Nebuliser Ready"]
         if severity == "critical":
-            resources += ["ICU Bed"]
+            resources += ["BiPAP / CPAP"]
 
-    elif any(k in et for k in ["poisoning", "overdose", "toxic"]):
-        resources += ["Gastric Lavage Setup", "Toxicology on Call", "Activated Charcoal"]
+    # ── Burns ─────────────────────────────────────────────────────────────────
+    if any(k in combined for k in ["burn", "fire", "smoke inhalation", "scalding"]):
+        resources += ["Burns Unit", "Plastic Surgeon on Call", "IV Fluids (Large Volume)"]
         if severity == "critical":
-            resources += ["ICU Bed", "Dialysis on Standby"]
+            resources += ["Airway Management Kit"]
 
-    elif any(k in et for k in ["obstetric", "deliver", "pregnan", "maternal"]):
+    # ── Poisoning / Overdose ──────────────────────────────────────────────────
+    if any(k in combined for k in ["poison", "overdose", "ingestion", "toxic",
+                                    "pesticide", "tablets", "drug"]):
+        resources += ["Gastric Lavage Setup", "Toxicology Consult", "Activated Charcoal"]
+        if severity == "critical":
+            resources += ["Dialysis Unit on Standby"]
+
+    # ── Obstetric ─────────────────────────────────────────────────────────────
+    if any(k in combined for k in ["pregnant", "labour", "delivery", "obstetric",
+                                    "contraction", "fetal", "maternity"]):
         resources += ["Obstetrics Team", "Neonatal ICU", "OT Ready"]
 
-    else:
-        # Generic fallback
+    # ── Diabetes / Metabolic ──────────────────────────────────────────────────
+    if any(k in combined for k in ["diabetic", "hypoglycemia", "glucose", "sugar", "insulin"]):
+        resources += ["Endocrinology Consult", "Glucose Drip Ready"]
+
+    # ── Allergic ──────────────────────────────────────────────────────────────
+    if any(k in combined for k in ["allergy", "anaphylaxis", "swelling", "hives", "epipen"]):
+        resources += ["Adrenaline Ready", "Allergy/Immunology Consult"]
+
+    # ── Fallback if nothing matched ───────────────────────────────────────────
+    if not resources:
         resources += ["Emergency Physician", "General Assessment Bay"]
 
-    # ── Severity-based additions (always applied) ────────────────────────────
-    if severity == "critical" and "ICU Bed" not in resources:
+    # ── Always-on severity additions ─────────────────────────────────────────
+    if severity == "critical" and not any("ICU" in r for r in resources):
         resources.append("ICU Bed")
 
-    if severity in ("critical", "serious") and "Blood Bank" not in str(resources):
+    if severity in ("critical", "serious") and not any("Blood Bank" in r for r in resources):
         resources.append("Blood Bank Notified")
 
-    return resources
+    # deduplicate preserving order
+    seen = set()
+    unique = []
+    for r in resources:
+        if r not in seen:
+            seen.add(r)
+            unique.append(r)
+    return unique
 
 
 def _generate_vitals(
@@ -291,23 +338,31 @@ def _generate_vitals(
     emergency_type: str = "Unknown",
     provided_blood_type: str = "Unknown",
     notes: str = "",
+    # Paramedic-provided vitals (optional — if given, used directly instead of random)
+    provided_gcs: Optional[int] = None,
+    provided_spo2: Optional[int] = None,
+    provided_hr: Optional[int] = None,
+    provided_bp_sys: Optional[int] = None,
+    provided_bp_dia: Optional[int] = None,
 ) -> PatientVitals:
     """
-    Generate patient vitals.  Vitals (GCS, HR, etc.) are still seeded from
-    ambulance_id for repeatability in demo scenarios.  Resources are now
-    computed from the real emergency_type provided by the paramedic.
-    Blood type comes from paramedic input (not randomly generated).
+    Generate patient vitals. Only user-provided vitals are used; if left blank,
+    they remain None (N/A).
+    Injuries and treatments are still seeded based on severity for demo flair.
+    Resources are computed from BOTH notes and emergency type keywords.
     """
     rng = random.Random(hash(ambulance_id) & 0xFFFFFFFF)
 
+    # Use exact vitals provided by the user (or None)
+    gcs = provided_gcs
+    spo2 = provided_spo2
+    hr = provided_hr
+    bp_sys = provided_bp_sys
+    bp_dia = provided_bp_dia
+    rr = None
+    temp_c = None
+
     if severity == "critical":
-        gcs    = rng.randint(6, 10)
-        spo2   = rng.randint(82, 94)
-        hr     = rng.randint(110, 140)
-        bp_sys = rng.randint(75, 100)
-        bp_dia = rng.randint(50, 70)
-        rr     = rng.randint(22, 30)
-        temp_c = round(rng.uniform(35.5, 37.0), 1)
         injuries = rng.sample([
             "Head injury", "Chest trauma", "Abdominal trauma",
             "Pelvic fracture", "Haemothorax", "Suspected internal bleeding",
@@ -319,13 +374,6 @@ def _generate_vitals(
         ], k=rng.randint(2, 4))
 
     elif severity == "serious":
-        gcs    = rng.randint(11, 13)
-        spo2   = rng.randint(90, 95)
-        hr     = rng.randint(95, 120)
-        bp_sys = rng.randint(95, 120)
-        bp_dia = rng.randint(60, 80)
-        rr     = rng.randint(18, 24)
-        temp_c = round(rng.uniform(36.0, 38.5), 1)
         injuries = rng.sample([
             "Limb fracture", "Laceration requiring surgical repair",
             "Rib fractures", "Suspected spinal injury",
@@ -336,13 +384,6 @@ def _generate_vitals(
         ], k=rng.randint(1, 3))
 
     else:  # moderate
-        gcs    = rng.randint(13, 15)
-        spo2   = rng.randint(94, 99)
-        hr     = rng.randint(70, 100)
-        bp_sys = rng.randint(110, 140)
-        bp_dia = rng.randint(65, 90)
-        rr     = rng.randint(14, 20)
-        temp_c = round(rng.uniform(36.5, 37.5), 1)
         injuries = rng.sample([
             "Contusions", "Minor lacerations", "Suspected fracture",
         ], k=rng.randint(1, 2))
@@ -357,8 +398,8 @@ def _generate_vitals(
         else rng.choice(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-", "Unknown"])
     )
 
-    # Smart rules-based resources
-    resources = _compute_resources(emergency_type, severity)
+    # Smart keyword-based resources (notes + emergency type)
+    resources = _compute_resources(emergency_type, severity, notes)
 
     return PatientVitals(
         gcs=gcs, spo2=spo2, hr=hr, bp_sys=bp_sys, bp_dia=bp_dia,
@@ -369,6 +410,7 @@ def _generate_vitals(
         blood_type=blood_type,
         resources_needed=resources,
     )
+
 
 
 
@@ -441,7 +483,14 @@ def _dispatch_notification(alert: HospitalAlert, event: str) -> dict:
     """
     v = alert.vitals
     resources_str = ", ".join(v.resources_needed) if v.resources_needed else "Standard assessment"
-    notes_str = f" Notes: {alert.notes}." if alert.notes else ""
+    notes_line = f"\nNotes: {alert.notes}" if alert.notes and alert.notes.strip() else ""
+
+    gcs_str = str(v.gcs) if v.gcs is not None else "N/A"
+    spo2_str = f"{v.spo2}%" if v.spo2 is not None else "N/A"
+    hr_str = str(v.hr) if v.hr is not None else "N/A"
+    bp_sys_str = str(v.bp_sys) if v.bp_sys is not None else "N/A"
+    bp_dia_str = str(v.bp_dia) if v.bp_dia is not None else "N/A"
+    bp_str = f"{bp_sys_str}/{bp_dia_str}" if bp_sys_str != "N/A" or bp_dia_str != "N/A" else "N/A"
 
     if event == "initial":
         msg = (
@@ -449,23 +498,23 @@ def _dispatch_notification(alert: HospitalAlert, event: str) -> dict:
             f"Ambulance {alert.ambulance_id} incoming.\n"
             f"ETA: {alert.current_eta_s/60:.1f} min | Severity: {alert.severity.upper()}\n"
             f"Emergency: {alert.emergency_type} | Blood: {v.blood_type}\n"
-            f"Vitals: GCS {v.gcs}, SpO2 {v.spo2}%, HR {v.hr}, BP {v.bp_sys}/{v.bp_dia}\n"
-            f"PREPARE: {resources_str}.{notes_str}"
+            f"Vitals: GCS {gcs_str}, SpO2 {spo2_str}, HR {hr_str}, BP {bp_str}\n"
+            f"PREPARE: {resources_str}.{notes_line}"
         )
     elif event == "update":
         msg = (
             f"[ETA UPDATE] {alert.hospital_name}\n"
             f"Ambulance {alert.ambulance_id} | {alert.emergency_type} | {alert.severity.upper()}\n"
             f"ETA: {alert.current_eta_s/60:.1f} min | Distance: {alert.distance_m:.0f}m\n"
-            f"Blood: {v.blood_type} | PREPARE: {resources_str}.{notes_str}"
+            f"Blood: {v.blood_type} | PREPARE: {resources_str}.{notes_line}"
         )
     else:  # arrival
         msg = (
             f"[ARRIVED] {alert.hospital_name}\n"
             f"Ambulance {alert.ambulance_id} has arrived.\n"
             f"Patient: {alert.emergency_type} | {alert.severity.upper()} | Blood: {v.blood_type}\n"
-            f"GCS {v.gcs}, SpO2 {v.spo2}%, HR {v.hr}, BP {v.bp_sys}/{v.bp_dia}\n"
-            f"Resources ready: {resources_str}."
+            f"Vitals: GCS {gcs_str}, SpO2 {spo2_str}, HR {hr_str}, BP {bp_str}\n"
+            f"Resources ready: {resources_str}.{notes_line}"
         )
 
 
@@ -558,6 +607,11 @@ class AlertManager:
         amb_lat: float,
         amb_lng: float,
         eta_s: float,
+        provided_gcs: Optional[int] = None,
+        provided_spo2: Optional[int] = None,
+        provided_hr: Optional[int] = None,
+        provided_bp_sys: Optional[int] = None,
+        provided_bp_dia: Optional[int] = None,
     ) -> Optional[dict]:
         """
         Check whether any alert event should be triggered based on the
@@ -581,7 +635,12 @@ class AlertManager:
         if "initial" not in fired and dist_m <= FIRST_ALERT_DISTANCE_M:
             alert = self._create_alert(
                 ambulance_id, severity, emergency_type, blood_type, notes,
-                hospital_id, eta_s, dist_m
+                hospital_id, eta_s, dist_m,
+                provided_gcs=provided_gcs,
+                provided_spo2=provided_spo2,
+                provided_hr=provided_hr,
+                provided_bp_sys=provided_bp_sys,
+                provided_bp_dia=provided_bp_dia,
             )
             notif = _dispatch_notification(alert, "initial")
             alert.status = AlertStatus.SENT
@@ -596,28 +655,30 @@ class AlertManager:
                 "notification": notif,
             }
 
+
         # ── ETA update ───────────────────────────────────────────────────────
-        if "initial" in fired and "update" not in fired and dist_m <= ETA_UPDATE_DISTANCE_M:
-            alert = self._alerts.get(self._active.get(key, ""))
-            if alert:
-                alert.current_eta_s = eta_s
-                alert.distance_m = dist_m
-                alert.status = AlertStatus.UPDATED
-                alert.eta_updates.append({
-                    "timestamp": time.time(),
-                    "eta_s": eta_s,
-                    "distance_m": dist_m,
-                })
-                notif = _dispatch_notification(alert, "update")
-                fired.add("update")
-                return {
-                    "event": "update",
-                    "alert_id": alert.alert_id,
-                    "hospital_name": alert.hospital_name,
-                    "eta_s": eta_s,
-                    "distance_m": dist_m,
-                    "notification": notif,
-                }
+        # Disabled for demo to avoid spamming the dashboard and phone with a second message.
+        # if "initial" in fired and "update" not in fired and dist_m <= ETA_UPDATE_DISTANCE_M:
+        #     alert = self._alerts.get(self._active.get(key, ""))
+        #     if alert:
+        #         alert.current_eta_s = eta_s
+        #         alert.distance_m = dist_m
+        #         alert.status = AlertStatus.UPDATED
+        #         alert.eta_updates.append({
+        #             "timestamp": time.time(),
+        #             "eta_s": eta_s,
+        #             "distance_m": dist_m,
+        #         })
+        #         notif = _dispatch_notification(alert, "update")
+        #         fired.add("update")
+        #         return {
+        #             "event": "update",
+        #             "alert_id": alert.alert_id,
+        #             "hospital_name": alert.hospital_name,
+        #             "eta_s": eta_s,
+        #             "distance_m": dist_m,
+        #             "notification": notif,
+        #         }
 
         # ── Arrival ──────────────────────────────────────────────────────────
         if "initial" in fired and "arrival" not in fired and dist_m <= ARRIVAL_DISTANCE_M:
@@ -653,11 +714,14 @@ class AlertManager:
         hospital_id: str,
         eta_s: float,
         distance_m: float,
+        provided_gcs: Optional[int] = None,
+        provided_spo2: Optional[int] = None,
+        provided_hr: Optional[int] = None,
+        provided_bp_sys: Optional[int] = None,
+        provided_bp_dia: Optional[int] = None,
     ) -> HospitalAlert:
         hospital = _HOSPITAL_INDEX.get(hospital_id)
         if not hospital:
-            # Fallback: find nearest hospital to destination coords
-            # (shouldn't happen in normal operation)
             hospital = HOSPITAL_REGISTRY[0]
 
         alert_id = str(uuid.uuid4())[:8]
@@ -666,6 +730,11 @@ class AlertManager:
             emergency_type=emergency_type,
             provided_blood_type=blood_type,
             notes=notes,
+            provided_gcs=provided_gcs,
+            provided_spo2=provided_spo2,
+            provided_hr=provided_hr,
+            provided_bp_sys=provided_bp_sys,
+            provided_bp_dia=provided_bp_dia,
         )
 
         alert = HospitalAlert(

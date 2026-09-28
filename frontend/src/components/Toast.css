@@ -92,12 +92,12 @@
 
 .toast__text {
   font-size: 12px;
-  color: #e6edf3;
+  color: var(--color-text-primary);
   line-height: 1.4;
 }
 
 .toast__sub {
   font-size: 11px;
-  color: #8b949e;
+  color: var(--color-text-secondary);
   margin-top: 2px;
 }

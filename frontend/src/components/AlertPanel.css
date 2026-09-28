@@ -46,7 +46,7 @@
 .hospital-type-badge--general {
   background: rgba(139,148,158,0.15);
   border: 1px solid rgba(139,148,158,0.3);
-  color: #8b949e;
+  color: var(--color-text-secondary);
 }
 
 .hospital-type-badge--children {
