@@ -113,13 +113,17 @@ function MapLegend() {
       ))}
       <div className="map-legend__divider" />
       <div className="map-legend__item">
-        <div style={{width: 12, height: 12, borderRadius: '50%', background: '#0969da', border: '1px solid white'}}></div> Start
+        <div style={{width: 14, height: 14, borderRadius: '50%', background: '#0969da', border: '1px solid white'}}></div> Start
       </div>
       <div className="map-legend__item">
-        <div style={{width: 12, height: 12, borderRadius: '50%', background: '#2da44e', border: '1px solid white'}}></div> Hospital
+        <div style={{ background: '#2da44e', border: '1px solid white', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+        </div> Hospital
       </div>
       <div className="map-legend__item">
-        <div style={{width: 12, height: 12, borderRadius: '50%', background: 'white', border: '2px solid #cf222e'}}></div> Ambulance
+        <div style={{ background: 'white', border: '1px solid #cf222e', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#cf222e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle><line x1="8" y1="9" x2="8" y2="9"></line></svg>
+        </div> Ambulance
       </div>
     </div>
   )

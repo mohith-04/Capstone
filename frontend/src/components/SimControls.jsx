@@ -236,9 +236,11 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
           }}
           disabled={isRunning}
         >
-          <span>{showVitals ? '▾' : '▸'}</span>
-          {showVitals ? 'Hide Patient Vitals' : '＋ Add Patient Vitals'}
-          {!showVitals && <span className="sim-vitals-toggle-hint">sent as N/A if skipped</span>}
+          <div className="sim-vitals-toggle-left">
+            <span>{showVitals ? '▾' : '▸'}</span>
+            <span>{showVitals ? 'Hide Patient Vitals' : 'Add Patient Vitals'}</span>
+          </div>
+          {!showVitals && <span className="sim-vitals-toggle-hint">(Optional)</span>}
         </button>
 
         {showVitals && (
