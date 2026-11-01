@@ -8,10 +8,13 @@
  *     The original layout — one ambulance, full map, full tabbed sidebar.
  *
  *   Dual mode
- *     Screen splits into two independent SimPane components side-by-side,
- *     each running its own ambulance (AMB-001 left, AMB-002 right).
- *     Both share the same backend signal intersections, so when both
- *     approach the same signal the conflict-resolution queue kicks in.
+ *     A single shared map showing both ambulances simultaneously.
+ *     A DualDemoPanel sidebar controls three hardcoded conflict scenarios:
+ *       1. ETA decides — one ambulance arrives at the conflict node sooner
+ *       2. Severity decides — equal ETA, severity is tiebreaker
+ *       3. Request time decides — both critical+equal, first request wins
+ *     A ConflictDecisionCard floats over the map when a conflict is active,
+ *     explaining WHY a winner was chosen.
  *
  * Single-mode layout (unchanged):
  *   Header   — title + mode toggle + backend connection badge
@@ -22,12 +25,14 @@
  * Dual-mode layout:
  *   Header   — same header with mode toggle
  *   Main:
- *     Two SimPane columns side-by-side, each = map + compact sidebar tabs
+ *     Left   — MapView showing BOTH ambulances on one shared map (flex:1)
+ *     Right  — 320px sidebar with DualDemoPanel scenario controls
  */
 
 import { useState, useEffect, useRef } from 'react'
 import { checkHealth }         from './api'
-import { useSimulation, DEFAULT_START_2 } from './hooks/useSimulation'
+import { useSimulation }       from './hooks/useSimulation'
+import { useDualSimulation }   from './hooks/useDualSimulation'
 import { useToasts, ToastContainer } from './components/Toast'
 import MapView                 from './components/MapView'
 import SimControls             from './components/SimControls'
@@ -36,7 +41,8 @@ import SignalPanel             from './components/SignalPanel'
 import AlertPanel              from './components/AlertPanel'
 import MetricsPanel            from './components/MetricsPanel'
 import DemoScript              from './components/DemoScript'
-import SimPane                 from './components/SimPane'
+import DualDemoPanel           from './components/DualDemoPanel'
+import ConflictDecisionCard    from './components/ConflictDecisionCard'
 
 import 'leaflet/dist/leaflet.css'
 import './App.css'
@@ -167,6 +173,10 @@ export default function App() {
   // ── Simulation hook (single-ambulance mode only) ─────────────────────────
   // In dual mode the two SimPane components each own their own hook instance.
   const sim = useSimulation({ ambulanceId: 'AMB-001' })
+
+  // ── Dual-ambulance simulation hook ───────────────────────────────────────
+  // Always called unconditionally (React hooks rule) — idle when not in use.
+  const dual = useDualSimulation()
 
   // ── Toast system ─────────────────────────────────────────────────────────
   const { toasts, addToast, dismissToast } = useToasts()
@@ -302,20 +312,36 @@ export default function App() {
 
         {/* ── Dual-ambulance demo mode ──────────────────────────────────── */}
         {demoMode === 'dual' && (
-          <div className="app-dual">
-            <SimPane
-              label="AMB-001"
-              accentColor="#58a6ff"
-              ambulanceId="AMB-001"
-              startCoords={null}
-            />
-            <SimPane
-              label="AMB-002"
-              accentColor="#a371f7"
-              ambulanceId="AMB-002"
-              startCoords={DEFAULT_START_2}
-            />
-          </div>
+          <>
+            {/* Single shared map — both ambulances on one view */}
+            <section className="app-map-area" style={{ flex: 1 }}>
+              <MapView
+                route={dual.sim1.route}
+                telemetry={dual.sim1.telemetry}
+                signals={dual.combinedSignals}
+                hospital={dual.sim1.hospital || dual.sim2.hospital}
+                simState={dual.sim1.simState}
+                route2={dual.sim2.route}
+                telemetry2={dual.sim2.telemetry}
+              />
+              {/* Conflict decision card floats over the map */}
+              <ConflictDecisionCard conflict={dual.activeConflict} />
+            </section>
+
+            {/* Dual demo sidebar */}
+            <aside className="app-sidebar">
+              <div className="tab-bar">
+                <span style={{ padding: '9px 12px', fontSize: 11, fontWeight: 700, color: '#a371f7' }}>
+                  🚑🚑 Dual Ambulance Demo
+                </span>
+              </div>
+              <div className="sidebar-content">
+                <SectionCard title="Conflict Scenario">
+                  <DualDemoPanel dual={dual} />
+                </SectionCard>
+              </div>
+            </aside>
+          </>
         )}
 
         {/* ── Single-ambulance mode (original layout) ───────────────────── */}

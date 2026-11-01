@@ -24,7 +24,7 @@
 import { useEffect } from 'react'
 import {
   MapContainer, TileLayer, Polyline,
-  CircleMarker, Marker, Popup, Tooltip, useMap,
+  Marker, Popup, Tooltip, useMap,
 } from 'react-leaflet'
 import L from 'leaflet'
 import { DEFAULT_START } from '../hooks/useSimulation'
@@ -45,6 +45,75 @@ const SIGNAL_COLORS = {
   restoring: '#58a6ff',
 }
 
+// ── Traffic light arm colours from signal phase ──────────────────────────────
+// Returns {n, s, e, w} for the four road arms of an intersection.
+// Phase A = N-S corridor green; Phase B = E-W corridor green.
+function getArmColors(phase, mode) {
+  const G = '#3fb950'   // green
+  const A = '#d29922'   // amber
+  const R = '#c0392b'   // red (darker for contrast on light map)
+  const DIM = '#555'    // dimmed in normal mode
+
+  if (mode === 'normal') {
+    // Normal cycling — show the current phase accurately but dimmed
+    if (phase === 'green_A') return { n: G, s: G, e: DIM, w: DIM }
+    if (phase === 'amber_A') return { n: A, s: A, e: DIM, w: DIM }
+    if (phase === 'green_B') return { n: DIM, s: DIM, e: G, w: G }
+    if (phase === 'amber_B') return { n: DIM, s: DIM, e: A, w: A }
+    return { n: DIM, s: DIM, e: DIM, w: DIM }  // all_red
+  }
+
+  // Priority / restoring modes — fully saturated colours
+  if (phase === 'green_A') return { n: G, s: G, e: R, w: R }
+  if (phase === 'amber_A') return { n: A, s: A, e: R, w: R }
+  if (phase === 'green_B') return { n: R, s: R, e: G, w: G }
+  if (phase === 'amber_B') return { n: R, s: R, e: A, w: A }
+  return { n: R, s: R, e: R, w: R }  // all_red
+}
+
+// Build a Leaflet DivIcon showing a "+" intersection with 4 coloured arms
+function makeSignalIcon(phase, mode, isConflict) {
+  const c = getArmColors(phase, mode)
+  const border = isConflict
+    ? '#f85149'
+    : (mode === 'priority_active' ? '#3fb950'
+      : mode === 'priority_pending' ? '#d29922'
+      : '#555')
+  const html = `
+    <div style="position:relative;width:34px;height:34px;">
+      <!-- N arm -->
+      <div style="position:absolute;left:13px;top:0;width:8px;height:13px;
+                  background:${c.n};border-radius:3px 3px 0 0;"></div>
+      <!-- S arm -->
+      <div style="position:absolute;left:13px;top:21px;width:8px;height:13px;
+                  background:${c.s};border-radius:0 0 3px 3px;"></div>
+      <!-- E arm -->
+      <div style="position:absolute;top:13px;left:21px;width:13px;height:8px;
+                  background:${c.e};border-radius:0 3px 3px 0;"></div>
+      <!-- W arm -->
+      <div style="position:absolute;top:13px;left:0;width:13px;height:8px;
+                  background:${c.w};border-radius:3px 0 0 3px;"></div>
+      <!-- Centre -->
+      <div style="position:absolute;left:12px;top:12px;width:10px;height:10px;
+                  background:#1c2128;border:2px solid ${border};border-radius:2px;
+                  ${isConflict ? 'animation:conflict-blink 0.8s ease-in-out infinite;' : ''}
+                  "></div>
+    </div>
+    <style>
+      @keyframes conflict-blink {
+        0%,100%{border-color:#f85149;} 50%{border-color:#ff8c00;}
+      }
+    </style>
+  `
+  return L.divIcon({
+    className: '',
+    html,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -20],
+  })
+}
+
 // ── DivIcon factories ─────────────────────────────────────────────────────────
 
 const AMBULANCE_ICON = L.divIcon({
@@ -52,6 +121,19 @@ const AMBULANCE_ICON = L.divIcon({
   html: `<div class="ambulance-icon">
     <div style="background: white; border: 2px solid #cf222e; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#cf222e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle><line x1="8" y1="9" x2="8" y2="9"></line></svg>
+    </div>
+  </div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -20],
+})
+
+// Orange ambulance icon for AMB-002 in dual mode
+const AMBULANCE_ICON_2 = L.divIcon({
+  className: '',
+  html: `<div class="ambulance-icon">
+    <div style="background: white; border: 2px solid #a371f7; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a371f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle><line x1="8" y1="9" x2="8" y2="9"></line></svg>
     </div>
   </div>`,
   iconSize: [36, 36],
@@ -113,6 +195,22 @@ function MapLegend() {
         </div>
       ))}
       <div className="map-legend__divider" />
+      {/* Signal cross icon explanation */}
+      <div className="map-legend__item" style={{ alignItems: 'flex-start', gap: 6 }}>
+        <div style={{ position: 'relative', width: 20, height: 20, flexShrink: 0, marginTop: 1 }}>
+          <div style={{ position: 'absolute', left: 8, top: 0, width: 4, height: 7, background: '#3fb950', borderRadius: '2px 2px 0 0' }} />
+          <div style={{ position: 'absolute', left: 8, top: 13, width: 4, height: 7, background: '#3fb950', borderRadius: '0 0 2px 2px' }} />
+          <div style={{ position: 'absolute', top: 8, left: 13, width: 7, height: 4, background: '#c0392b', borderRadius: '0 2px 2px 0' }} />
+          <div style={{ position: 'absolute', top: 8, left: 0, width: 7, height: 4, background: '#c0392b', borderRadius: '2px 0 0 2px' }} />
+          <div style={{ position: 'absolute', left: 7, top: 7, width: 6, height: 6, background: '#1c2128', border: '1.5px solid #555', borderRadius: 1 }} />
+        </div>
+        <span style={{ fontSize: 10, lineHeight: 1.4 }}>
+          <strong>+</strong> = intersection<br />
+          green arm = active phase<br />
+          red arm = stopped
+        </span>
+      </div>
+      <div className="map-legend__divider" />
       <div className="map-legend__item">
         <div style={{width: 14, height: 14, borderRadius: '50%', background: '#0969da', border: '1px solid white'}}></div> Start
       </div>
@@ -122,9 +220,14 @@ function MapLegend() {
         </div> Hospital
       </div>
       <div className="map-legend__item">
-        <div style={{ background: 'white', border: '1px solid #cf222e', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'white', border: '2px solid #cf222e', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#cf222e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle><line x1="8" y1="9" x2="8" y2="9"></line></svg>
-        </div> Ambulance
+        </div> AMB-001
+      </div>
+      <div className="map-legend__item">
+        <div style={{ background: 'white', border: '2px solid #a371f7', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a371f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle><line x1="8" y1="9" x2="8" y2="9"></line></svg>
+        </div> AMB-002
       </div>
     </div>
   )
@@ -148,10 +251,14 @@ function fmtEta(s) {
  *   signals: Array,
  *   hospital: object|null,
  *   simState: string,
+ *   route2?: {coords: Array}|null,
+ *   telemetry2?: object|null,
  * }} props
  */
-export default function MapView({ route, telemetry, signals, hospital, simState }) {
-  const ambPosition = telemetry ? [telemetry.lat, telemetry.lng] : null
+export default function MapView({ route, telemetry, signals, hospital, simState,
+                                  route2 = null, telemetry2 = null }) {
+  const ambPosition  = telemetry  ? [telemetry.lat,  telemetry.lng]  : null
+  const ambPosition2 = telemetry2 ? [telemetry2.lat, telemetry2.lng] : null
   const simActive = simState === 'running' || simState === 'arrived'
 
   return (
@@ -211,60 +318,101 @@ export default function MapView({ route, telemetry, signals, hospital, simState 
 
         {/* Start marker */}
         {simActive && (
-          <Marker position={[DEFAULT_START.lat, DEFAULT_START.lng]} icon={START_ICON}>
+          <Marker
+            position={route?.coords?.[0] || [DEFAULT_START.lat, DEFAULT_START.lng]}
+            icon={START_ICON}
+          >
             <Popup>
               <div className="map-popup">
                 <div className="map-popup__title">Start Point</div>
-                <div className="map-popup__row">Location <span>Benz Circle, Vijayawada</span></div>
+                <div className="map-popup__row">AMB-001 Start</div>
               </div>
             </Popup>
           </Marker>
         )}
 
-        {/* Signal intersection markers */}
+        {/* Signal intersection markers — cross/+ shaped traffic light icons.
+            Phase A (green_A) = N-S corridor green, E-W red.
+            Phase B (green_B) = E-W corridor green, N-S red. */}
         {signals.map((s) => {
           const hasConflict = s.conflict_detected && s.pending_queue?.length > 0
+          const icon = makeSignalIcon(s.phase, s.mode, hasConflict)
           return (
-            <CircleMarker
-              key={s.node_id}
-              center={[s.lat, s.lng]}
-              radius={hasConflict ? 13 : 10}
-              pathOptions={{
-                fillColor: hasConflict ? '#f85149' : (SIGNAL_COLORS[s.mode] || '#8b949e'),
-                fillOpacity: 0.85,
-                color: hasConflict ? '#ff6b6b' : '#000',
-                weight: hasConflict ? 2.5 : 1,
-              }}
-            >
+            <Marker key={s.node_id} position={[s.lat, s.lng]} icon={icon}>
               <Tooltip sticky>
                 <div style={{ fontFamily: 'monospace', fontSize: 11 }}>
                   {hasConflict && (
                     <div style={{ color: '#f85149', fontWeight: 700, marginBottom: 3 }}>
-                      ⚠ CONFLICT — {s.pending_queue.length + 1} ambulances
+                      ⚠ CONFLICT — {s.pending_queue.length + 1} ambulances queued
                     </div>
                   )}
                   <strong>{s.mode.replace(/_/g, ' ').toUpperCase()}</strong><br />
                   Phase: {s.phase}<br />
                   Serving: {s.priority_ambulance_id || '—'}<br />
                   {hasConflict && <>Waiting: {s.pending_queue.join(', ')}<br /></>}
+                  {s.conflict_reason && (
+                    <>Winner by: {s.conflict_reason}<br /></>
+                  )}
                   Amb: {s.ambulance_direction} / Cross: {s.cross_direction}
                   {s.time_saved_s > 0 && <><br />Saved: {s.time_saved_s.toFixed(1)}s</>}
                 </div>
               </Tooltip>
-            </CircleMarker>
+            </Marker>
           )
         })}
 
-        {/* Ambulance marker */}
+        {/* AMB-001 ambulance marker */}
         {ambPosition && (
           <Marker position={ambPosition} icon={AMBULANCE_ICON}>
             <Popup>
               <div className="map-popup">
-                <div className="map-popup__title">Ambulance</div>
+                <div className="map-popup__title">AMB-001</div>
                 <div className="map-popup__row">Speed <span>{Math.round(telemetry.speed_kmh)} km/h</span></div>
                 <div className="map-popup__row">ETA <span>{fmtEta(telemetry.eta_seconds)}</span></div>
                 <div className="map-popup__row">Road <span>{telemetry.current_road_name || 'Unknown'}</span></div>
                 <div className="map-popup__row">Congestion <span>{telemetry.congestion_factor.toFixed(1)}×</span></div>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* AMB-002 route polyline — purple, only shown in dual mode */}
+        {route2?.coords?.length > 1 && (() => {
+          const mainCoords2 = route2.coords
+          return (
+            <>
+              <Polyline
+                positions={mainCoords2}
+                pathOptions={{ color: '#a371f7', weight: 4, opacity: 0.85 }}
+              />
+              {hospital && (
+                <Polyline
+                  positions={[
+                    mainCoords2[mainCoords2.length - 1],
+                    [hospital.lat, hospital.lng],
+                  ]}
+                  pathOptions={{
+                    color:     '#a371f7',
+                    weight:    3,
+                    opacity:   0.6,
+                    dashArray: '8 6',
+                  }}
+                />
+              )}
+            </>
+          )
+        })()}
+
+        {/* AMB-002 ambulance marker — purple icon */}
+        {ambPosition2 && (
+          <Marker position={ambPosition2} icon={AMBULANCE_ICON_2}>
+            <Popup>
+              <div className="map-popup">
+                <div className="map-popup__title">AMB-002</div>
+                <div className="map-popup__row">Speed <span>{Math.round(telemetry2.speed_kmh)} km/h</span></div>
+                <div className="map-popup__row">ETA <span>{fmtEta(telemetry2.eta_seconds)}</span></div>
+                <div className="map-popup__row">Road <span>{telemetry2.current_road_name || 'Unknown'}</span></div>
+                <div className="map-popup__row">Congestion <span>{telemetry2.congestion_factor.toFixed(1)}×</span></div>
               </div>
             </Popup>
           </Marker>

@@ -87,20 +87,24 @@ export function useSimulation({ ambulanceId: configAmbId = 'AMB-001', startCoord
    * @param {number} params.speedMultiplier  1–20
    */
   const start = useCallback(async ({
-    ambulanceId   = configAmbId,
-    hospitalId    = 'govt-gen-hosp',
-    endLat        = null,
-    endLng        = null,
-    severity      = 'critical',
+    ambulanceId     = configAmbId,
+    // startLat/startLng can be overridden per-call (used by dual-demo scenarios).
+    // Falls back to the hook-level resolvedStart (default Benz Circle).
+    startLat        = resolvedStart.lat,
+    startLng        = resolvedStart.lng,
+    hospitalId      = 'govt-gen-hosp',
+    endLat          = null,
+    endLng          = null,
+    severity        = 'critical',
     speedMultiplier = 5,
-    emergencyType = 'Unknown',
-    bloodType     = 'Unknown',
-    notes         = '',
-    gcs           = null,
-    spo2          = null,
-    hr            = null,
-    bpSys         = null,
-    bpDia         = null,
+    emergencyType   = 'Unknown',
+    bloodType       = 'Unknown',
+    notes           = '',
+    gcs             = null,
+    spo2            = null,
+    hr              = null,
+    bpSys           = null,
+    bpDia           = null,
   } = {}) => {
     // Guard: don't start if already running
     if (simState === 'running' || simState === 'starting') return
@@ -123,8 +127,8 @@ export function useSimulation({ ambulanceId: configAmbId = 'AMB-001', startCoord
     try {
       const data = await startSimulation({
         ambulanceId,
-        startLat: resolvedStart.lat,
-        startLng: resolvedStart.lng,
+        startLat,
+        startLng,
         endLat,
         endLng,
         severity,

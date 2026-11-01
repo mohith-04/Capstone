@@ -1,0 +1,207 @@
+/**
+ * DualDemoPanel.css — Styles for the dual-ambulance demo control panel
+ */
+
+.dual-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Ambulance status row ────────────────────────────────────────────── */
+
+.dual-panel__status-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 0 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 8px;
+}
+
+.dual-panel__amb-badge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid;
+  background: var(--color-surface);
+}
+
+.dual-panel__amb-id {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────── */
+
+.dual-panel__section {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dual-panel__section:last-child {
+  border-bottom: none;
+}
+
+.dual-panel__section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+/* ── Severity selectors ──────────────────────────────────────────────── */
+
+.dual-panel__sev-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dual-panel__sev-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dual-panel__sev-col label {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dual-panel__select {
+  width: 100%;
+  padding: 5px 6px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.dual-panel__select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dual-panel__sev-note {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* ── Scenario buttons ────────────────────────────────────────────────── */
+
+.dual-panel__scenario-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  margin-bottom: 7px;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  color: inherit;
+}
+
+.dual-panel__scenario-btn:hover {
+  border-color: #58a6ff;
+  background: #131c2e;
+}
+
+.dual-panel__scenario-btn:last-child {
+  margin-bottom: 0;
+}
+
+.dual-panel__scenario-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dual-panel__scenario-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.dual-panel__scenario-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.dual-panel__scenario-desc {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.dual-panel__scenario-tip {
+  font-size: 10px;
+  color: #58a6ff;
+  margin-top: 2px;
+}
+
+/* ── Stop button ─────────────────────────────────────────────────────── */
+
+.dual-panel__stop-btn {
+  width: 100%;
+  padding: 9px;
+  background: #3a1a1a;
+  color: #f85149;
+  border: 1px solid #6e2c2c;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 8px;
+}
+
+.dual-panel__stop-btn:hover {
+  background: #5a1a1a;
+}
+
+.dual-panel__running-hint {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* ── Reference section ───────────────────────────────────────────────── */
+
+.dual-panel__section--ref {
+  background: var(--color-surface);
+  border-radius: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border) !important;
+  margin-top: 4px;
+}
+
+.dual-panel__tier-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.9;
+}
+
+.dual-panel__tier-list strong {
+  color: var(--color-text-primary);
+}

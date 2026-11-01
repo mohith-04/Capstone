@@ -239,6 +239,73 @@ def bearing_to_approach_phase(bearing_deg: float) -> str:
 
 
 # ============================================================================
+# Conflict-reason helper
+# ============================================================================
+
+# ETA threshold: if two ambulances are within this many seconds, treat their
+# ETAs as "equal" and fall through to the next tiebreaker (severity).
+_ETA_EQUAL_THRESHOLD_S: float = 2.0
+
+def _priority_request_cmp(a: "PriorityRequest", b: "PriorityRequest") -> int:
+    """
+    4-tier priority comparator for multi-ambulance conflicts.
+
+    Ordering:
+      1. ETA: If |a.eta - b.eta| > 2.0s, strictly lower ETA wins.
+      2. Severity: If ETAs are within 2.0s, more severe patient wins (critical > serious > moderate).
+      3. Distance: If severities equal, physically closer ambulance wins.
+      4. Timestamp: If distances equal, earlier request timestamp wins.
+      5. Ambulance ID: Strict tiebreaker.
+    """
+    # Tier 1: ETA threshold
+    if abs(a.eta_seconds - b.eta_seconds) > _ETA_EQUAL_THRESHOLD_S:
+        return -1 if a.eta_seconds < b.eta_seconds else 1
+
+    # Tier 2: Severity (lower rank number = higher medical priority)
+    a_sev = SEVERITY_RANK.get(a.severity, 99)
+    b_sev = SEVERITY_RANK.get(b.severity, 99)
+    if a_sev != b_sev:
+        return -1 if a_sev < b_sev else 1
+
+    # Tier 3: Distance
+    if abs(a.distance_m - b.distance_m) > 10.0:
+        return -1 if a.distance_m < b.distance_m else 1
+
+    # Tier 4: Timestamp (first-come first-served)
+    if a.timestamp != b.timestamp:
+        return -1 if a.timestamp < b.timestamp else 1
+
+    # Tier 5: Fallback ID
+    return -1 if a.ambulance_id < b.ambulance_id else 1
+
+def _conflict_reason(winner: "PriorityRequest", loser: "PriorityRequest") -> str:
+    """
+    Determine WHY the winner beat the loser in a two-ambulance conflict.
+
+    Mirrors the _priority_request_cmp ordering exactly:
+      1. ETA          -- nearest ambulance first (threshold 2s)
+      2. Severity     -- lower severity_rank number wins
+      3. Distance     -- shorter distance wins
+      4. Timestamp    -- first requester wins
+
+    Returns one of: "eta", "severity", "distance", "request_time"
+    """
+    # Tier 1: ETA
+    if abs(winner.eta_seconds - loser.eta_seconds) > _ETA_EQUAL_THRESHOLD_S:
+        return "eta"
+    # Tier 2: Severity
+    w_sev = SEVERITY_RANK.get(winner.severity, 99)
+    l_sev = SEVERITY_RANK.get(loser.severity, 99)
+    if w_sev != l_sev:
+        return "severity"
+    # Tier 3: Distance
+    if abs(winner.distance_m - loser.distance_m) > 10:
+        return "distance"
+    # Tier 4: First-come-first-served
+    return "request_time"
+
+
+# ============================================================================
 # Enums
 # ============================================================================
 
@@ -291,6 +358,22 @@ class SignalSnapshot:
     # ── Multi-ambulance conflict fields ───────────────────────────────────────
     conflict_detected: bool = False          # True when >= 2 ambulances are competing
     pending_queue: list = field(default_factory=list)  # IDs of ambulances waiting
+    # ── Conflict resolution explanation (for the demo Decision Card) ──────────
+    # Populated whenever conflict_detected is True so the frontend can show
+    # exactly WHY the winning ambulance was chosen over the others.
+    #
+    # conflict_reason values:
+    #   "eta"          -- winner had a strictly lower ETA (> 2s difference)
+    #   "severity"     -- ETAs were similar; winner had higher case severity
+    #   "distance"     -- severity equal; winner was physically closer
+    #   "request_time" -- all else equal; winner sent the request earlier
+    conflict_reason: str = ""       # one of the four strings above, or "" if no conflict
+    conflict_winner_id: str = ""    # ambulance_id of the winner
+    conflict_winner_eta: Optional[float] = None    # winner's ETA at conflict detection
+    conflict_winner_sev: str = ""   # winner's severity label
+    conflict_loser_id: str = ""     # ambulance_id of the first queued loser
+    conflict_loser_eta: Optional[float] = None     # loser's ETA at conflict detection
+    conflict_loser_sev: str = ""    # loser's severity label
 
 
 @dataclass
@@ -421,15 +504,16 @@ class IntersectionController:
         return self._queue[0][1] if self._queue else None
 
     def _rebuild_heap(self) -> None:
-        """Rebuild the heap after an in-place ETA update (O(n))."""
-        self._queue = [(req.heap_key(), req) for req in self._queue_map.values()]
-        heapq.heapify(self._queue)
+        """Rebuild and sort the queue according to the 4-tier priority rules."""
+        from functools import cmp_to_key
+        sorted_reqs = sorted(self._queue_map.values(), key=cmp_to_key(_priority_request_cmp))
+        self._queue = [(req.heap_key(), req) for req in sorted_reqs]
 
     def _pop_active(self) -> Optional[PriorityRequest]:
         """Remove and return the highest-priority request from the queue."""
         if not self._queue:
             return None
-        _, req = heapq.heappop(self._queue)
+        _, req = self._queue.pop(0)
         self._queue_map.pop(req.ambulance_id, None)
         return req
 
@@ -575,7 +659,7 @@ class IntersectionController:
 
         # ── Case 3: New ambulance -- add to queue ─────────────────────────────
         self._queue_map[req.ambulance_id] = req
-        heapq.heappush(self._queue, (req.heap_key(), req))
+        self._rebuild_heap()
 
         # ── Set _priority_phase from the top of the heap ──────────────────────
         # Only update when NOT currently mid-preemption — changing the phase
@@ -713,6 +797,24 @@ class IntersectionController:
         conflict = len(self._queue) > 1
         pending_ids = [r.ambulance_id for _, r in self._queue[1:]]
 
+        # ── Conflict resolution explanation ────────────────────────────────
+        # When two or more ambulances are competing, determine WHY the winner
+        # was chosen.  This powers the frontend ConflictDecisionCard overlay.
+        reason = winner_id = winner_eta = winner_sev = ""
+        loser_id = loser_eta = loser_sev = ""
+        winner_eta_val = loser_eta_val = None
+
+        if conflict and active and len(self._queue) >= 2:
+            # The second entry in the min-heap is the first loser
+            loser_req = self._queue[1][1]   # (heap_key, PriorityRequest)
+            reason = _conflict_reason(active, loser_req)
+            winner_id = active.ambulance_id
+            winner_eta_val = round(active.eta_seconds, 1)
+            winner_sev = active.severity
+            loser_id = loser_req.ambulance_id
+            loser_eta_val = round(loser_req.eta_seconds, 1)
+            loser_sev = loser_req.severity
+
         return SignalSnapshot(
             node_id=self.node_id,
             lat=self.lat,
@@ -728,6 +830,13 @@ class IntersectionController:
             time_saved_s=round(self._time_saved_s, 1),
             conflict_detected=conflict,
             pending_queue=pending_ids,
+            conflict_reason=reason,
+            conflict_winner_id=winner_id,
+            conflict_winner_eta=winner_eta_val,
+            conflict_winner_sev=winner_sev,
+            conflict_loser_id=loser_id,
+            conflict_loser_eta=loser_eta_val,
+            conflict_loser_sev=loser_sev,
         )
 
     def _transition_phase(self, new_phase: SignalPhase) -> None:

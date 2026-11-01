@@ -175,16 +175,40 @@ def _inject_demo_signals(G: nx.MultiDiGraph) -> None:
     OpenStreetMap data for Vijayawada often lacks complete 'highway=traffic_signals'
     tags. To guarantee the Green Corridor demonstration works during the capstone viva,
     we artificially inject traffic signals onto key nodes along the primary demo
-    route (Benz Circle -> Govt General Hospital).
+    route (Benz Circle -> Govt General Hospital) AND at the dual-ambulance conflict
+    intersection.
+
+    Node 6146884325 at (16.51987, 80.63130) — DUAL-DEMO CONFLICT INTERSECTION:
+      - Degree-7 junction near GGH; every route from any direction passes through it.
+      - AMB-001 (from Benz Circle / east) approaches via E-W corridor (Phase B)
+      - AMB-002 (from Gandhi Nagar / north) approaches via N-S corridor (Phase A)
+      - Used for the three-scenario conflict demonstration:
+          Scenario 1 (ETA):       AMB-001 from Benz Circle (~43s ETA), AMB-002 from
+                                  Gandhi Nagar (~20s ETA) -> AMB-002 wins by ETA
+          Scenario 2 (Severity):  Both ~30s ETA (within 2s threshold), user-set
+                                  severity determines winner
+          Scenario 3 (Timestamp): Both ~30s ETA, both Critical, AMB-001 fires 300ms
+                                  earlier -> AMB-001 wins by request time
     """
-    demo_nodes = [1880441586, 2837580337, 4393296803]
+    demo_nodes = [
+        1880441586,   # Signal 1 on Benz Circle -> GGH route
+        2837580337,   # Signal 2 on Benz Circle -> GGH route
+        4393296803,   # Signal 3 on Benz Circle -> GGH route
+        3430413451,   # Original conflict candidate (N-S x E-W near Benz Circle)
+        6146884325,   # Dual-demo conflict intersection — universal bottleneck near GGH
+                      #   lat=16.51987 lng=80.63130  degree=7
+                      #   ALL routes from E/W/N/S to GGH pass through this node.
+                      #   AMB-001 (Benz Circle E): approaches from east (Phase B)
+                      #   AMB-002 (Gandhi Nagar N): approaches from north (Phase A)
+                      #   This guarantees a visible conflict signal in the dual-demo.
+    ]
     count = 0
     for node in demo_nodes:
         if node in G.nodes:
             G.nodes[node]['highway'] = 'traffic_signals'
             count += 1
     if count > 0:
-        logger.info("Injected %d demo traffic signals for the Govt Gen Hosp route.", count)
+        logger.info("Injected %d demo traffic signals (incl. dual-demo conflict node).", count)
 
 def load_graph() -> nx.MultiDiGraph:
     """
