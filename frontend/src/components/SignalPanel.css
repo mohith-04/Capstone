@@ -1,4 +1,4 @@
-/* SignalPanel.css */
+/* SignalPanel.css — includes multi-ambulance conflict styles */
 
 .signal-panel {
   display: flex;
@@ -150,5 +150,113 @@
 
 .signal-saved {
   color: var(--color-accent-green);
+  font-weight: 600;
+}
+
+/* ── Multi-ambulance conflict styles ──────────────────────────────────────── */
+
+/* Conflict summary bar at the top of the panel */
+.signal-conflict-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.4);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #f85149;
+  font-weight: 600;
+  animation: throb-conflict 1.8s ease-in-out infinite;
+}
+
+.signal-conflict-summary__icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Card-level conflict highlight */
+.signal-card--conflict {
+  border-color: rgba(248, 81, 73, 0.5) !important;
+  box-shadow: 0 0 8px rgba(248, 81, 73, 0.2);
+}
+
+/* Conflict badge next to mode badge */
+.signal-conflict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(248, 81, 73, 0.15);
+  border: 1px solid rgba(248, 81, 73, 0.6);
+  color: #f85149;
+  animation: throb-conflict 1.4s ease-in-out infinite;
+}
+
+@keyframes throb-conflict {
+  0%, 100% { opacity: 1; box-shadow: none; }
+  50%       { opacity: 0.7; box-shadow: 0 0 8px rgba(248, 81, 73, 0.5); }
+}
+
+/* Header badges wrapper (mode + optional conflict) */
+.signal-card__badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Active ambulance row */
+.signal-active-amb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.signal-active-label {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.signal-active-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #3fb950;
+  font-weight: 600;
+}
+
+/* Pending queue row */
+.signal-pending-queue {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 10px;
+}
+
+.signal-pending-label {
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 9px;
+}
+
+.signal-pending-id {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(248, 81, 73, 0.12);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: #f85149;
+  font-size: 10px;
   font-weight: 600;
 }

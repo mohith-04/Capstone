@@ -8,12 +8,15 @@
  *   - A two-circle traffic light for ambulance direction and cross direction
  *   - ETA (how far away the ambulance is, at current speed)
  *   - Time saved by preemption so far
+ *   - ⚠ CONFLICT badge when two ambulances are competing for the same signal
+ *   - Pending queue (list of waiting ambulance IDs behind the active one)
  *
  * The mode badges have CSS animations that make the state visually obvious:
  *   priority_pending → yellow pulse    (preemption being set up)
  *   priority_active  → green glow      (GREEN held for ambulance)
  *   restoring        → blue fade       (returning to normal)
  *   normal           → static grey
+ *   conflict         → red throb       (two ambulances competing)
  */
 
 import './SignalPanel.css'
@@ -33,12 +36,25 @@ function shortNodeId(nodeId) {
   return s.length > 6 ? `…${s.slice(-6)}` : s
 }
 
+/** Shorten ambulance ID for display (e.g. "AMB-001" → "AMB-001") */
+function shortAmbId(id) {
+  return id ? String(id).slice(0, 8) : '—'
+}
+
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function ModeBadge({ mode }) {
   return (
     <span className={`signal-mode signal-mode--${mode}`}>
       {MODE_LABELS[mode] || mode}
+    </span>
+  )
+}
+
+function ConflictBadge() {
+  return (
+    <span className="signal-conflict-badge" title="Two ambulances are competing for this signal">
+      ⚠ CONFLICT
     </span>
   )
 }
@@ -52,14 +68,42 @@ function TrafficLight({ colour, label }) {
   )
 }
 
-function SignalCard({ signal: s }) {
+function PendingQueue({ queue }) {
+  if (!queue || queue.length === 0) return null
   return (
-    <div className="signal-card">
-      {/* Header: node ID + mode badge */}
+    <div className="signal-pending-queue">
+      <span className="signal-pending-label">Queued:</span>
+      {queue.map((id) => (
+        <span key={id} className="signal-pending-id">{shortAmbId(id)}</span>
+      ))}
+    </div>
+  )
+}
+
+function SignalCard({ signal: s }) {
+  const hasConflict = s.conflict_detected && s.pending_queue?.length > 0
+
+  return (
+    <div className={`signal-card ${hasConflict ? 'signal-card--conflict' : ''}`}>
+      {/* Header: node ID + mode badge + optional conflict badge */}
       <div className="signal-card__header">
         <span className="signal-card__id">#{shortNodeId(s.node_id)}</span>
-        <ModeBadge mode={s.mode} />
+        <div className="signal-card__badges">
+          {hasConflict && <ConflictBadge />}
+          <ModeBadge mode={s.mode} />
+        </div>
       </div>
+
+      {/* Active ambulance info */}
+      {s.priority_ambulance_id && (
+        <div className="signal-active-amb">
+          <span className="signal-active-label">Serving:</span>
+          <span className="signal-active-id">{shortAmbId(s.priority_ambulance_id)}</span>
+        </div>
+      )}
+
+      {/* Pending queue (other ambulances waiting) */}
+      <PendingQueue queue={s.pending_queue} />
 
       {/* Traffic lights: ambulance direction + cross direction */}
       <div className="signal-lights">
@@ -84,6 +128,22 @@ function SignalCard({ signal: s }) {
   )
 }
 
+// ── Conflict summary bar ──────────────────────────────────────────────────────
+
+function ConflictSummary({ signals }) {
+  const conflicts = signals.filter((s) => s.conflict_detected && s.pending_queue?.length > 0)
+  if (conflicts.length === 0) return null
+  return (
+    <div className="signal-conflict-summary">
+      <span className="signal-conflict-summary__icon">⚠</span>
+      <span>
+        {conflicts.length} intersection{conflicts.length > 1 ? 's' : ''} with competing ambulances
+        — priority queue arbitrating automatically
+      </span>
+    </div>
+  )
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 /**
@@ -100,6 +160,7 @@ export default function SignalPanel({ signals = [] }) {
 
   return (
     <div className="signal-panel">
+      <ConflictSummary signals={signals} />
       {signals.map((s) => (
         <SignalCard key={s.node_id} signal={s} />
       ))}

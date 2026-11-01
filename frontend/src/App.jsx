@@ -1,30 +1,33 @@
 /**
- * App.jsx — Root application component (Stage 7: polished)
- * ==============================================================
+ * App.jsx — Root application component
+ * ======================================
  *
- * Changes vs Stage 6:
- *  - Toast notifications for alert events and mission complete
- *  - New "Demo" tab with DemoScript presenter guide (auto-advances with sim)
- *  - Tabs now: Controls | Telemetry | Signals | Alerts | Metrics | Demo
- *  - More robust signal-active detection (checks any signal in priority_active mode)
- *  - mapView passes simState for start-point marker toggling
+ * Supports two demo modes toggled from the header:
  *
- * Layout (unchanged):
- *   Header   — title + backend connection badge
+ *   Single mode (default)
+ *     The original layout — one ambulance, full map, full tabbed sidebar.
+ *
+ *   Dual mode
+ *     Screen splits into two independent SimPane components side-by-side,
+ *     each running its own ambulance (AMB-001 left, AMB-002 right).
+ *     Both share the same backend signal intersections, so when both
+ *     approach the same signal the conflict-resolution queue kicks in.
+ *
+ * Single-mode layout (unchanged):
+ *   Header   — title + mode toggle + backend connection badge
  *   Main:
  *     Left   — MapView (flex:1)
  *     Right  — 320px tabbed sidebar
  *
- * Architecture note:
- *   useSimulation() hook owns ALL simulation state.
- *   App.jsx reads from it and passes slices to child components.
- *   Toasts bridge the gap: they surface alert events visually without
- *   forcing the user to switch to the Alerts tab.
+ * Dual-mode layout:
+ *   Header   — same header with mode toggle
+ *   Main:
+ *     Two SimPane columns side-by-side, each = map + compact sidebar tabs
  */
 
 import { useState, useEffect, useRef } from 'react'
 import { checkHealth }         from './api'
-import { useSimulation }       from './hooks/useSimulation'
+import { useSimulation, DEFAULT_START_2 } from './hooks/useSimulation'
 import { useToasts, ToastContainer } from './components/Toast'
 import MapView                 from './components/MapView'
 import SimControls             from './components/SimControls'
@@ -33,6 +36,7 @@ import SignalPanel             from './components/SignalPanel'
 import AlertPanel              from './components/AlertPanel'
 import MetricsPanel            from './components/MetricsPanel'
 import DemoScript              from './components/DemoScript'
+import SimPane                 from './components/SimPane'
 
 import 'leaflet/dist/leaflet.css'
 import './App.css'
@@ -150,6 +154,8 @@ function alertToToast(event, hospitalName, etaS, distM) {
 export default function App() {
   const [connectionStatus, setConnectionStatus] = useState('loading')
   const [activeTab,        setActiveTab]        = useState('controls')
+  // 'single' = classic one-ambulance view | 'dual' = split two-ambulance view
+  const [demoMode,         setDemoMode]         = useState('single')
 
   // ── Backend health check ─────────────────────────────────────────────────
   useEffect(() => {
@@ -158,8 +164,9 @@ export default function App() {
       .catch(() => setConnectionStatus('error'))
   }, [])
 
-  // ── Simulation hook ──────────────────────────────────────────────────────
-  const sim = useSimulation()
+  // ── Simulation hook (single-ambulance mode only) ─────────────────────────
+  // In dual mode the two SimPane components each own their own hook instance.
+  const sim = useSimulation({ ambulanceId: 'AMB-001' })
 
   // ── Toast system ─────────────────────────────────────────────────────────
   const { toasts, addToast, dismissToast } = useToasts()
@@ -266,12 +273,53 @@ export default function App() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <SimStateBadge simState={sim.simState} />
+          {/* ── Demo mode toggle ─────────────────────────────────────── */}
+          <button
+            onClick={() => setDemoMode((m) => m === 'single' ? 'dual' : 'single')}
+            style={{
+              padding: '4px 12px',
+              borderRadius: 20,
+              border: '1px solid',
+              borderColor: demoMode === 'dual' ? '#a371f7' : 'var(--color-border)',
+              background:   demoMode === 'dual' ? '#2a1a4a' : 'transparent',
+              color:        demoMode === 'dual' ? '#a371f7' : 'var(--color-text-secondary)',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s',
+            }}
+            title={demoMode === 'single' ? 'Switch to Dual-Ambulance Demo' : 'Switch to Single-Ambulance View'}
+          >
+            {demoMode === 'dual' ? '🚑🚑 Dual Mode' : '🚑 Single Mode'}
+          </button>
           <StatusBadge status={connectionStatus} />
         </div>
       </header>
 
       {/* ── Main ────────────────────────────────────────────────────────── */}
       <main className="app-main">
+
+        {/* ── Dual-ambulance demo mode ──────────────────────────────────── */}
+        {demoMode === 'dual' && (
+          <div className="app-dual">
+            <SimPane
+              label="AMB-001"
+              accentColor="#58a6ff"
+              ambulanceId="AMB-001"
+              startCoords={null}
+            />
+            <SimPane
+              label="AMB-002"
+              accentColor="#a371f7"
+              ambulanceId="AMB-002"
+              startCoords={DEFAULT_START_2}
+            />
+          </div>
+        )}
+
+        {/* ── Single-ambulance mode (original layout) ───────────────────── */}
+        {demoMode === 'single' && (<>
 
         {/* Map area */}
         <section className="app-map-area">
@@ -348,6 +396,7 @@ export default function App() {
 
           </div>
         </aside>
+        </>)}
       </main>
     </div>
   )

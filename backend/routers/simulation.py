@@ -61,7 +61,7 @@ from services.simulator import (
 )
 from services.router import compute_route
 from services import congestion as congestion_svc
-from services.signals import get_corridor, reset_corridor
+from services.signals import get_corridor, remove_corridor, reset_corridor, bearing_to_approach_phase
 from services.hospitals import (
     get_alert_manager,
     get_hospital,
@@ -72,6 +72,84 @@ from services.hospitals import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sim", tags=["simulation"])
+
+# ---------------------------------------------------------------------------
+# Approach-direction helpers
+# ---------------------------------------------------------------------------
+
+def _compute_bearing(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """
+    Initial bearing in degrees (0=North, 90=East, clockwise) between two points.
+    Duplicated here from services/simulator.py to avoid a circular import.
+    """
+    import math
+    dlon = math.radians(lng2 - lng1)
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    x = math.sin(dlon) * math.cos(phi2)
+    y = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlon)
+    return (math.degrees(math.atan2(x, y)) + 360) % 360
+
+
+def _compute_approach_phases(
+    G,
+    node_path: list,
+    signal_node_ids: list,
+) -> dict:
+    """
+    For every signal node on the route, determine which signal phase
+    serves the ambulance's approach road.
+
+    Method
+    ------
+    We look at the route edge LEADING INTO each signal node — i.e. the
+    segment from node_path[i-1] to node_path[i].  Its bearing tells us
+    the ambulance's direction of travel as it arrives at the intersection.
+    bearing_to_approach_phase() maps that bearing to "A" (N-S corridor)
+    or "B" (E-W corridor).
+
+    Args:
+        G:               NetworkX road graph (for node lat/lng lookup).
+        node_path:       Ordered list of OSM node IDs along the route.
+        signal_node_ids: Subset of node_path that are signalised.
+
+    Returns:
+        {node_id: "A" or "B"} for every signal node.
+    """
+    signal_set = set(signal_node_ids)
+    approach_phases = {}
+
+    for i, node_id in enumerate(node_path):
+        if node_id not in signal_set:
+            continue
+
+        if i == 0:
+            # Signal is the very first node — use the outgoing segment (reversed)
+            if len(node_path) > 1 and node_path[1] in G.nodes:
+                lat1 = G.nodes[node_path[1]]["y"]
+                lng1 = G.nodes[node_path[1]]["x"]
+                lat2 = G.nodes[node_id]["y"]
+                lng2 = G.nodes[node_id]["x"]
+            else:
+                approach_phases[node_id] = "A"
+                continue
+        else:
+            prev = node_path[i - 1]
+            if prev not in G.nodes or node_id not in G.nodes:
+                approach_phases[node_id] = "A"
+                continue
+            lat1 = G.nodes[prev]["y"]
+            lng1 = G.nodes[prev]["x"]
+            lat2 = G.nodes[node_id]["y"]
+            lng2 = G.nodes[node_id]["x"]
+
+        bearing = _compute_bearing(lat1, lng1, lat2, lng2)
+        phase   = bearing_to_approach_phase(bearing)
+        approach_phases[node_id] = phase
+        logger.debug(
+            "Signal %d: approach bearing=%.1f° → Phase %s", node_id, bearing, phase
+        )
+
+    return approach_phases
 
 # ---------------------------------------------------------------------------
 # Graph dependency — same pattern as route.py
@@ -230,17 +308,29 @@ async def start_simulation(req: StartSimRequest):
     register_simulation(sim)
 
     # ── Stage 4: Setup signal corridor for this route ─────────────────────
-    corridor = get_corridor()
+    # Each ambulance gets its own corridor that shares the global registry --
+    # this is what enables multi-ambulance conflict resolution.
+    corridor = get_corridor(req.ambulance_id)
     if route_result.signal_nodes_on_route:
         # Build node coordinate lookup for signal nodes
         sig_coords = {}
         for nid in route_result.signal_nodes_on_route:
             if nid in G.nodes:
                 sig_coords[nid] = (G.nodes[nid]["y"], G.nodes[nid]["x"])
+
+        # Compute the approach phase (A=N-S / B=E-W) for every signal node
+        # using the actual route geometry — this is the core of the approach-
+        # direction fix.  Previously all signals were assumed to be Phase A.
+        approach_phases = _compute_approach_phases(
+            G,
+            route_result.node_path,
+            route_result.signal_nodes_on_route,
+        )
+
         corridor.setup_for_route(
-            ambulance_id=req.ambulance_id,
             signal_node_ids=route_result.signal_nodes_on_route,
             node_coords=sig_coords,
+            approach_phases=approach_phases,
         )
 
     # ── Stage 5: Resolve destination hospital + store on sim ──────────────
@@ -357,6 +447,33 @@ async def reroute_simulation(ambulance_id: str, req: RerouteRequest):
     # 3. Splice the new route into the simulation
     sim.reroute(new_route_data)
 
+    # 4. Update signal-corridor approach phases for the new route
+    #    Without this, the corridor would still hold approach phases from the
+    #    pre-reroute path — causing wrong phases at signals on the new road.
+    corridor = get_corridor(ambulance_id)
+    if corridor and new_route_result.signal_nodes_on_route:
+        new_sig_coords = {
+            nid: (G.nodes[nid]["y"], G.nodes[nid]["x"])
+            for nid in new_route_result.signal_nodes_on_route
+            if nid in G.nodes
+        }
+        new_approach_phases = _compute_approach_phases(
+            G,
+            new_route_result.node_path,
+            new_route_result.signal_nodes_on_route,
+        )
+        corridor.setup_for_route(
+            signal_node_ids=new_route_result.signal_nodes_on_route,
+            node_coords=new_sig_coords,
+            approach_phases=new_approach_phases,
+        )
+        logger.info(
+            "[%s] reroute: corridor updated — %d signals, approach phases: %s",
+            ambulance_id,
+            len(new_route_result.signal_nodes_on_route),
+            new_approach_phases,
+        )
+
     return {
         "ambulance_id": ambulance_id,
         "reroute_count": sim.reroute_count,
@@ -447,11 +564,10 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                 break
 
             # ── Stage 4: Update signal corridor with current telemetry ────
-            # The corridor controller uses the ambulance's position, speed, and
-            # heading to: (1) request priority at upcoming signals, (2) release
-            # priority at signals the ambulance has passed, (3) tick all signal
-            # state machines forward by dt seconds.
-            corridor = get_corridor()
+            # Each ambulance has its own corridor controller that shares the
+            # global IntersectionController registry.  Conflict resolution
+            # (priority queue) happens inside each IntersectionController.
+            corridor = get_corridor(ambulance_id)
             signal_snapshots = corridor.update(ping, dt=tick_interval)
             signal_data = [
                 {
@@ -467,6 +583,8 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                     "priority_ambulance_id": s.priority_ambulance_id,
                     "priority_eta_s": s.priority_eta_s,
                     "time_saved_s": s.time_saved_s,
+                    "conflict_detected": s.conflict_detected,
+                    "pending_queue": s.pending_queue,
                 }
                 for s in signal_snapshots
             ]
@@ -544,7 +662,7 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
 
             # Check for arrived
             if sim.state == SimulationState.ARRIVED:
-                corridor_stats = get_corridor().get_stats()
+                corridor_stats = get_corridor(ambulance_id).get_stats()
 
                 # Stage 7: Calculate actual wall-clock elapsed time.
                 # Because the simulator runs at speed_multiplier × real-time, the
@@ -633,4 +751,7 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
         if sim.state == SimulationState.RUNNING:
             sim.cancel()
         unregister_simulation(ambulance_id)
+        # Remove this ambulance's corridor -- its IntersectionControllers remain
+        # in the GlobalSignalRegistry so other ambulances' queues are unaffected.
+        remove_corridor(ambulance_id)
         logger.info("Simulation %s cleaned up", ambulance_id)

@@ -95,6 +95,7 @@ class TelemetryPing:
     is_near_signal: bool      # approaching a signal node?
     signal_node_id: Optional[int] = None
     reroute_count: int = 0
+    severity: str = "critical"  # passed to signal corridor for priority queue tie-breaking
 
 
 # ---------------------------------------------------------------------------
@@ -563,6 +564,7 @@ class AmbulanceSimulation:
             is_near_signal=is_near_sig,
             signal_node_id=sig_node,
             reroute_count=self.reroute_count,
+            severity=self.severity,
         )
 
 

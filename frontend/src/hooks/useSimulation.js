@@ -26,10 +26,18 @@ import { startSimulation, rerouteSimulation } from '../api'
 
 // Fixed Benz Circle (start) and Kanaka Durga Temple (end) as demo defaults.
 // These are the same coordinates used throughout backend testing.
-export const DEFAULT_START = { lat: 16.5062, lng: 80.6480 }
-export const DEFAULT_END   = { lat: 16.5193, lng: 80.6305 }
+export const DEFAULT_START  = { lat: 16.5062, lng: 80.6480 }
+export const DEFAULT_END    = { lat: 16.5193, lng: 80.6305 }
 
-export function useSimulation() {
+// AMB-002 starts from a different location (Governorpet area) so both
+// ambulances share some signals on the way to the same hospital — this is
+// what triggers the multi-ambulance conflict resolution we built.
+export const DEFAULT_START_2 = { lat: 16.5120, lng: 80.6350 }
+
+/**
+ * @param {{ ambulanceId?: string, startCoords?: {lat: number, lng: number} }} config
+ */
+export function useSimulation({ ambulanceId: configAmbId = 'AMB-001', startCoords = null } = {}) {
   // ── Simulation lifecycle state ───────────────────────────────────────────
   // 'idle' → 'starting' → 'running' → 'arrived' | 'error'
   const [simState, setSimState] = useState('idle')
@@ -54,8 +62,12 @@ export function useSimulation() {
   // We use refs (not state) for values only needed inside async callbacks,
   // to avoid stale closure problems without triggering re-renders.
   const wsRef           = useRef(null)   // The live WebSocket
-  const ambulanceIdRef  = useRef('AMB-001')
+  const ambulanceIdRef  = useRef(configAmbId)
   const startTimeRef    = useRef(null)   // For elapsed-time calculation in MetricsPanel
+
+  // Resolve the starting coordinates — use the explicit override if provided,
+  // otherwise fall back to the default start (Benz Circle).
+  const resolvedStart = startCoords || DEFAULT_START
 
   // ── WebSocket URL ─────────────────────────────────────────────────────────
   // We connect directly to the backend WS port (not via Vite proxy) because
@@ -75,7 +87,7 @@ export function useSimulation() {
    * @param {number} params.speedMultiplier  1–20
    */
   const start = useCallback(async ({
-    ambulanceId   = 'AMB-001',
+    ambulanceId   = configAmbId,
     hospitalId    = 'govt-gen-hosp',
     endLat        = null,
     endLng        = null,
@@ -111,8 +123,8 @@ export function useSimulation() {
     try {
       const data = await startSimulation({
         ambulanceId,
-        startLat: DEFAULT_START.lat,
-        startLng: DEFAULT_START.lng,
+        startLat: resolvedStart.lat,
+        startLng: resolvedStart.lng,
         endLat,
         endLng,
         severity,

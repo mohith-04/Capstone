@@ -105,6 +105,7 @@ function MapLegend() {
         { color: '#d29922', label: 'Priority Pending' },
         { color: '#3fb950', label: 'Priority Active' },
         { color: '#58a6ff', label: 'Restoring' },
+        { color: '#f85149', label: 'Conflict (queued)' },
       ].map(({ color, label }) => (
         <div key={label} className="map-legend__item">
           <span className="map-legend__dot" style={{ background: color }} />
@@ -221,28 +222,38 @@ export default function MapView({ route, telemetry, signals, hospital, simState 
         )}
 
         {/* Signal intersection markers */}
-        {signals.map((s) => (
-          <CircleMarker
-            key={s.node_id}
-            center={[s.lat, s.lng]}
-            radius={10}
-            pathOptions={{
-              fillColor: SIGNAL_COLORS[s.mode] || '#8b949e',
-              fillOpacity: 0.85,
-              color: '#000',
-              weight: 1,
-            }}
-          >
-            <Tooltip sticky>
-              <div style={{ fontFamily: 'monospace', fontSize: 11 }}>
-                <strong>{s.mode.replace(/_/g, ' ').toUpperCase()}</strong><br />
-                Phase: {s.phase}<br />
-                Amb: {s.ambulance_direction} / Cross: {s.cross_direction}
-                {s.time_saved_s > 0 && <><br />Saved: {s.time_saved_s.toFixed(1)}s</>}
-              </div>
-            </Tooltip>
-          </CircleMarker>
-        ))}
+        {signals.map((s) => {
+          const hasConflict = s.conflict_detected && s.pending_queue?.length > 0
+          return (
+            <CircleMarker
+              key={s.node_id}
+              center={[s.lat, s.lng]}
+              radius={hasConflict ? 13 : 10}
+              pathOptions={{
+                fillColor: hasConflict ? '#f85149' : (SIGNAL_COLORS[s.mode] || '#8b949e'),
+                fillOpacity: 0.85,
+                color: hasConflict ? '#ff6b6b' : '#000',
+                weight: hasConflict ? 2.5 : 1,
+              }}
+            >
+              <Tooltip sticky>
+                <div style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                  {hasConflict && (
+                    <div style={{ color: '#f85149', fontWeight: 700, marginBottom: 3 }}>
+                      ⚠ CONFLICT — {s.pending_queue.length + 1} ambulances
+                    </div>
+                  )}
+                  <strong>{s.mode.replace(/_/g, ' ').toUpperCase()}</strong><br />
+                  Phase: {s.phase}<br />
+                  Serving: {s.priority_ambulance_id || '—'}<br />
+                  {hasConflict && <>Waiting: {s.pending_queue.join(', ')}<br /></>}
+                  Amb: {s.ambulance_direction} / Cross: {s.cross_direction}
+                  {s.time_saved_s > 0 && <><br />Saved: {s.time_saved_s.toFixed(1)}s</>}
+                </div>
+              </Tooltip>
+            </CircleMarker>
+          )
+        })}
 
         {/* Ambulance marker */}
         {ambPosition && (

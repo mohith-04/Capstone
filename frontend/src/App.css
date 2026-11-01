@@ -49,6 +49,24 @@
   margin-top: 2px;
 }
 
+/* ── Dual-ambulance demo mode layout ─────────────────────────────────────── */
+
+/*
+ * .app-dual fills the entire .app-main area and splits it into
+ * two equal-width panes side-by-side, with a small gap between them.
+ * Each pane (SimPane) is self-contained: map on top, sidebar tabs below.
+ */
+.app-dual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
 /* ── Main two-column layout ──────────────────────────────────────────────── */
 
 .app-main {
