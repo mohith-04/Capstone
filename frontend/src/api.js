@@ -197,6 +197,17 @@ export async function getHospitals() {
   return _get('/hospitals')
 }
 
+/**
+ * Capacity-aware destination ranking: weighs routed ETA against ER beds,
+ * specialties and diversion status. Returns { recommended_id, nearest_id,
+ * changed_from_nearest, summary, ranking: [...] }.
+ */
+export async function recommendHospital({ lat, lng, emergencyType, severity }) {
+  return _post('/hospitals/recommend', {
+    lat, lng, emergency_type: emergencyType, severity,
+  })
+}
+
 /** Get one hospital by ID. */
 export async function getHospital(hospitalId) {
   return _get(`/hospitals/${hospitalId}`)

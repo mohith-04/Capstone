@@ -21,8 +21,9 @@ export default defineConfig({
     proxy: {
       // All calls to /api/** are forwarded to the FastAPI backend.
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        ws: true,   // WebSocket telemetry (/api/sim/{id}/ws) goes through the same proxy
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },

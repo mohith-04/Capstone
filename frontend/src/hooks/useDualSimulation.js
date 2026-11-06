@@ -77,6 +77,11 @@ const DEMO_SPEED = 10
 //   AMB-001 request fires 300ms before AMB-002.
 //   Arrive together, both Critical → earlier request timestamp wins!
 
+// Fixed start points. In scenarios 2 and 3 the two ambulances come at the
+// conflict junction from DIFFERENT roads, so the signal has to choose between
+// two competing phases (checked with the backend's own approach-phase logic):
+//   AMB-001  East  (16.5070, 80.6430) -> arrives heading 295 deg -> Phase B (east-west)
+//   AMB-002  North (16.5290, 80.6313) -> arrives heading 194 deg -> Phase A (north-south)
 const SCENARIO_CONFIGS = {
   eta: {
     start1: { lat: 16.5062, lng: 80.6480 },   // Benz Circle — far east (~43s ETA)
@@ -95,8 +100,9 @@ const SCENARIO_CONFIGS = {
   timestamp: {
     start1: { lat: 16.5070, lng: 80.6430 },   // Same coords as Severity scenario
     start2: { lat: 16.5290, lng: 80.6313 },
-    // AMB-001 fires 300ms BEFORE AMB-002
-    // Both Critical severity + same ETA -> request time (timestamp) decides
+    // AMB-001 fires 300ms BEFORE AMB-002 -> AMB-001 wins (first requester).
+    // (A shorter 100ms gap flipped the winner to AMB-002, because the two
+    // approach roads differ in length, so we keep 300ms.)
     delayMs: 300,
     forceSeverity: true,     // both forced Critical — only request time differs
     forcedSev: 'critical',
@@ -145,6 +151,17 @@ export function useDualSimulation() {
     }
     return Object.values(map)
   }, [sim1.signals, sim2.signals])
+
+  // ── Hospital marker for the demo ──────────────────────────────────────────
+  // The three scenarios are built around a destination right beside the
+  // conflict signal (routes to the registry's exact GGH location don't pass it),
+  // so both ambulances end their routes at DEMO_HOSPITAL_LAT/LNG. Pin the marker
+  // there too, so the routes run solid all the way to the hospital instead of
+  // stopping at the signal with a long dotted connector to a marker 1.4 km away.
+  const demoHospital = useMemo(() => {
+    const h = sim1.hospital || sim2.hospital
+    return h ? { ...h, lat: DEMO_HOSPITAL_LAT, lng: DEMO_HOSPITAL_LNG } : null
+  }, [sim1.hospital, sim2.hospital])
 
   // ── First signal with active conflict (for ConflictDecisionCard) ─────────
   const activeConflict = useMemo(
@@ -208,6 +225,7 @@ export function useDualSimulation() {
     sim2,
     combinedSignals,
     activeConflict,
+    demoHospital,
     startBoth,
     stopBoth,
     anyRunning,

@@ -11,8 +11,11 @@
  */
 
 import { useState, useEffect } from 'react'
-import { getHospitals, resetAlerts, resetSignals, clearCongestion } from '../api'
+import { getHospitals, resetAlerts, resetSignals, clearCongestion, recommendHospital } from '../api'
+import { DEFAULT_START } from '../hooks/useSimulation'
 import './SimControls.css'
+
+const fmtMin = (s) => `${Math.max(1, Math.round(s / 60))} min`
 
 const STATE_DOT = {
   idle:     '○',
@@ -61,6 +64,33 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
         setLoadingHospitals(false)
       })
   }, [])
+
+  // ── Smart (capacity-aware) destination ────────────────────────────────────
+  // While `smart` is on, the destination follows the recommendation, which is
+  // refreshed whenever the emergency type or severity changes. Picking a
+  // hospital by hand switches smart routing off (crew override).
+  const [smart,   setSmart]   = useState(true)
+  const [rec,     setRec]     = useState(null)
+  const [recBusy, setRecBusy] = useState(false)
+  const [recErr,  setRecErr]  = useState('')
+
+  useEffect(() => {
+    if (!smart) return
+    let cancelled = false
+    // Debounce so quick changes don't spam the backend.
+    const t = setTimeout(() => {
+      setRecBusy(true)
+      recommendHospital({ ...DEFAULT_START, emergencyType, severity })
+        .then((r) => {
+          if (cancelled) return
+          setRec(r); setRecErr('')
+          setHospitalId(r.recommended_id)
+        })
+        .catch((e) => { if (!cancelled) setRecErr(e.message) })
+        .finally(() => { if (!cancelled) setRecBusy(false) })
+    }, 250)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [smart, emergencyType, severity])
 
   const isRunning = simState === 'running'
   const isIdle    = simState === 'idle' || simState === 'arrived' || simState === 'error'
@@ -151,16 +181,57 @@ export default function SimControls({ simState, onStart, onStop, onReroute, onRe
             id="hospital-select"
             className="sim-select"
             value={hospitalId}
-            onChange={(e) => setHospitalId(e.target.value)}
+            onChange={(e) => { setHospitalId(e.target.value); setSmart(false) }}
             disabled={isRunning}
           >
             {hospitals.map((h) => (
               <option key={h.id} value={h.id}>
-                {h.name}
+                {h.name}{h.status?.diversion ? ' — DIVERSION' : ''}
               </option>
             ))}
           </select>
         )}
+
+        {/* ── Smart routing: why this hospital ─────────────────────────── */}
+        <div style={{ marginTop: 8, fontSize: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={smart} disabled={isRunning}
+              onChange={(e) => setSmart(e.target.checked)} />
+            🧭 Smart destination (ETA + beds + specialty)
+          </label>
+          {recBusy && <div style={{ color: '#8b949e', marginTop: 4 }}>Ranking hospitals…</div>}
+          {recErr && <div style={{ color: '#f85149', marginTop: 4 }}>⚠ {recErr}</div>}
+          {rec && !recBusy && (
+            <div style={{
+              marginTop: 6, padding: '8px 10px', borderRadius: 6, lineHeight: 1.45,
+              background: rec.changed_from_nearest ? '#2a2110' : '#10261a',
+              border: `1px solid ${rec.changed_from_nearest ? '#6b5314' : '#1f6b3a'}`,
+              color: '#e6edf3',
+            }}>
+              {smart
+                ? <><b>{rec.changed_from_nearest ? '↪ Not the nearest — ' : '✓ '}</b>{rec.summary}</>
+                : <i>Manual choice — tap a row or tick Smart destination to follow the recommendation.</i>}
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {rec.ranking.map((r, i) => (
+                  <div key={r.hospital.id}
+                    onClick={() => { if (!isRunning) { setHospitalId(r.hospital.id); setSmart(false) } }}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', gap: 8, cursor: 'pointer',
+                      opacity: r.excluded ? 0.5 : 1,
+                      fontWeight: r.hospital.id === hospitalId ? 700 : 400,
+                    }}
+                    title={[...r.pros, ...r.reasons].join(' · ')}>
+                    <span>{i + 1}. {r.hospital.short_name}</span>
+                    <span style={{ color: '#8b949e', whiteSpace: 'nowrap' }}>
+                      {fmtMin(r.eta_s)} · {r.status.er_beds_available}/{r.status.er_beds_total} beds
+                      {r.excluded ? ' · DIVERSION' : r.reasons.length ? ' · ⚠' : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Severity selector ─────────────────────────────────────────── */}

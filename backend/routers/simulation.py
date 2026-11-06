@@ -41,6 +41,9 @@ a separate POST endpoint for every client→server action.
 """
 
 import asyncio
+import fleet
+import trips
+from dataclasses import asdict as _asdict
 import logging
 import time
 from dataclasses import asdict
@@ -555,6 +558,17 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
     prev_reroute_count = sim.reroute_count
     last_route_coords = list(sim.coords)
 
+    # ── Stage 6: open a trip record if this unit belongs to an organisation ──
+    trip_id = None
+    trip_org = fleet.org_of(ambulance_id)
+    if trip_org is not None:
+        _hm = getattr(sim, "_hospital_meta", None) or {}
+        _h = get_hospital(_hm.get("hospital_id")) if _hm.get("hospital_id") else None
+        trip_id = trips.start_trip(
+            trip_org, ambulance_id, _hm.get("hospital_id"), _h.name if _h else None,
+            _hm.get("emergency_type"), _hm.get("severity"),
+        )
+
     try:
         while not sim.is_finished:
             # Advance the simulation
@@ -585,6 +599,14 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                     "time_saved_s": s.time_saved_s,
                     "conflict_detected": s.conflict_detected,
                     "pending_queue": s.pending_queue,
+                    # Why the winner won — drives the ConflictDecisionCard in dual mode
+                    "conflict_reason": s.conflict_reason,
+                    "conflict_winner_id": s.conflict_winner_id,
+                    "conflict_winner_eta": s.conflict_winner_eta,
+                    "conflict_winner_sev": s.conflict_winner_sev,
+                    "conflict_loser_id": s.conflict_loser_id,
+                    "conflict_loser_eta": s.conflict_loser_eta,
+                    "conflict_loser_sev": s.conflict_loser_sev,
                 }
                 for s in signal_snapshots
             ]
@@ -615,6 +637,20 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                 },
             })
 
+            # ── Stage 6: publish to the hospital fleet dashboard ─────────
+            hm = getattr(sim, "_hospital_meta", None) or {}
+            fleet.publish(ambulance_id, {
+                "lat": ping.lat, "lng": ping.lng,
+                "speed_kmh": ping.speed_kmh, "heading_deg": ping.heading_deg,
+                "eta_seconds": ping.eta_seconds,
+                "distance_remaining_m": ping.distance_remaining_m,
+                "state": ping.state, "severity": ping.severity,
+                "current_road_name": ping.current_road_name,
+                "reroute_count": ping.reroute_count,
+                "hospital_id": hm.get("hospital_id"),
+                "emergency_type": hm.get("emergency_type"),
+            })
+
             # ── Stage 5: Hospital pre-alert check ─────────────────────────
             # Each tick we check whether the ambulance has crossed one of the
             # three alert thresholds (2km, 1km, 50m from destination hospital).
@@ -640,6 +676,19 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                     provided_bp_dia=hosp_meta.get("bp_dia"),
                 )
                 if alert_event:
+                    _a = get_alert_manager().get_alert(alert_event["alert_id"])
+                    fleet.emit(ambulance_id, "alert", alert={
+                        "alert_id": alert_event["alert_id"],
+                        "event": alert_event["event"],
+                        "hospital_name": alert_event["hospital_name"],
+                        "eta_s": alert_event.get("eta_s"),
+                        "distance_m": alert_event.get("distance_m"),
+                        "severity": hosp_meta["severity"],
+                        "emergency_type": hosp_meta["emergency_type"],
+                        "blood_type": hosp_meta["blood_type"],
+                        "notes": hosp_meta["notes"],
+                        "vitals": _asdict(_a.vitals) if _a else None,
+                    })
                     # Push a dedicated "alert" message so the frontend can
                     # show a notification popup and update the alert panel.
                     await websocket.send_json({
@@ -659,6 +708,7 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                 })
                 prev_reroute_count = sim.reroute_count
                 last_route_coords = list(sim.coords)
+                fleet.emit(ambulance_id, "reroute", count=sim.reroute_count)
 
             # Check for arrived
             if sim.state == SimulationState.ARRIVED:
@@ -671,6 +721,21 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
                 # the simulated time the ambulance would have taken in real-time physics.
                 elapsed_wall_s = sim.finished_at - sim.started_at
                 real_world_equiv_s = elapsed_wall_s * sim.speed_multiplier
+
+                # Stage 6: persist the finished trip + tell the dashboard
+                if trip_id is not None:
+                    trips.finish_trip(
+                        trip_id, "completed",
+                        distance_m=sim._distance_covered_m,
+                        duration_s=real_world_equiv_s,
+                        estimated_s=sim.initial_estimated_time_s,
+                        reroute_count=sim.reroute_count,
+                        preemptions=corridor_stats.get("total_preemptions"),
+                        signal_saved_s=corridor_stats.get("total_time_saved_s"),
+                    )
+                fleet.emit(ambulance_id, "arrived",
+                           duration_s=round(real_world_equiv_s, 1),
+                           signal_saved_s=corridor_stats.get("total_time_saved_s"))
 
                 await websocket.send_json({
                     "type": "arrived",
@@ -750,6 +815,11 @@ async def simulation_websocket(websocket: WebSocket, ambulance_id: str):
         # Clean up the simulation if the client disconnected
         if sim.state == SimulationState.RUNNING:
             sim.cancel()
+        if trip_id is not None:
+            trips.finish_trip(trip_id, "cancelled",
+                              distance_m=getattr(sim, "_distance_covered_m", None),
+                              reroute_count=sim.reroute_count)  # no-op if already completed
+        fleet.clear(ambulance_id)
         unregister_simulation(ambulance_id)
         # Remove this ambulance's corridor -- its IntersectionControllers remain
         # in the GlobalSignalRegistry so other ambulances' queues are unaffected.

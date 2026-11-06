@@ -11,10 +11,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import 'leaflet/dist/leaflet.css'   // ← must come before any Leaflet component
 import './index.css'
-import App from './App.jsx'
+import Root from './Root.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <Root />
   </StrictMode>,
 )

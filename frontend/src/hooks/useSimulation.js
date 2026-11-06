@@ -74,7 +74,7 @@ export function useSimulation({ ambulanceId: configAmbId = 'AMB-001', startCoord
   // Vite's HTTP proxy doesn't forward WebSocket upgrades reliably in all
   // configurations.  Using a hardcoded ws:// URL is simpler and equally fine
   // for a local demo.
-  const WS_BASE = 'ws://localhost:8000'
+  const WS_BASE = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api`
 
   // ── start() ──────────────────────────────────────────────────────────────
   /**

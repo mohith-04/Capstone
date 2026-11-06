@@ -157,7 +157,7 @@ function alertToToast(event, hospitalName, etaS, distM) {
 
 // ── Root component ───────────────────────────────────────────────────────────
 
-export default function App() {
+export default function App({ ambulanceId = 'AMB-001', user = null, onLogout = null }) {
   const [connectionStatus, setConnectionStatus] = useState('loading')
   const [activeTab,        setActiveTab]        = useState('controls')
   // 'single' = classic one-ambulance view | 'dual' = split two-ambulance view
@@ -172,7 +172,7 @@ export default function App() {
 
   // ── Simulation hook (single-ambulance mode only) ─────────────────────────
   // In dual mode the two SimPane components each own their own hook instance.
-  const sim = useSimulation({ ambulanceId: 'AMB-001' })
+  const sim = useSimulation({ ambulanceId })
 
   // ── Dual-ambulance simulation hook ───────────────────────────────────────
   // Always called unconditionally (React hooks rule) — idle when not in use.
@@ -243,7 +243,7 @@ export default function App() {
   function handleStart(params) {
     prevAlertCount.current = 0
     sim.start({
-      ambulanceId:     'AMB-001',
+      ambulanceId,
       hospitalId:      params.hospitalId,
       endLat:          params.endLat,
       endLng:          params.endLng,
@@ -304,6 +304,17 @@ export default function App() {
             {demoMode === 'dual' ? '🚑🚑 Dual Mode' : '🚑 Single Mode'}
           </button>
           <StatusBadge status={connectionStatus} />
+          {user && (
+            <span style={{ fontSize: 12, color: '#8b949e' }}>
+              {user.unit_id} · {user.org_name}
+            </span>
+          )}
+          {onLogout && (
+            <button onClick={onLogout} style={{
+              background: 'none', border: '1px solid #30363d', color: '#8b949e',
+              borderRadius: 6, padding: '3px 10px', fontSize: 12, cursor: 'pointer',
+            }}>Sign out</button>
+          )}
         </div>
       </header>
 
@@ -319,7 +330,7 @@ export default function App() {
                 route={dual.sim1.route}
                 telemetry={dual.sim1.telemetry}
                 signals={dual.combinedSignals}
-                hospital={dual.sim1.hospital || dual.sim2.hospital}
+                hospital={dual.demoHospital}
                 simState={dual.sim1.simState}
                 route2={dual.sim2.route}
                 telemetry2={dual.sim2.telemetry}
