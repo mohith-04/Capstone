@@ -41,3 +41,12 @@ HOSPITAL_PHONE_NUMBER: str = os.getenv("HOSPITAL_PHONE_NUMBER", "")
 ALERT_ETA_THRESHOLD_SECONDS: int = int(
     os.getenv("ALERT_ETA_THRESHOLD_SECONDS", "300")
 )
+
+# ── Accounts / organisations ────────────────────────────────────────────────
+# SQLite file for orgs + users, and the HS256 secret used to sign login tokens.
+# CHANGE JWT_SECRET in any real deployment.
+DB_PATH: str = os.getenv(
+    "DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "app.db")
+)
+JWT_SECRET: str = os.getenv("JWT_SECRET", "dev-only-change-me")
+JWT_TTL_SECONDS: int = int(os.getenv("JWT_TTL_SECONDS", str(60 * 60 * 12)))

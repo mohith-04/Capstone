@@ -17,3 +17,6 @@ scikit-learn                # required by osmnx nearest_nodes on unprojected gra
 
 # ── Stage 5 (hospital SMS alert) — uncomment when adding Twilio ─────────────
 # twilio==9.0.5
+
+# ── Accounts (Stage 6) ──────────────────────────────────────────────────────
+pyjwt==2.8.0

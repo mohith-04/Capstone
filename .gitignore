@@ -29,3 +29,7 @@ Thumbs.db
 
 # ── OSMnx graph cache (large binary files) ────────────────────────────────────
 backend/data/graph_cache/
+
+# ── Local account database ────────────────────────────────────────────────────
+backend/data/
+backend/.venv/

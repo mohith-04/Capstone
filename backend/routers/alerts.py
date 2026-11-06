@@ -23,6 +23,8 @@ provides:
 import logging
 from typing import Optional
 
+import capacity
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -85,6 +87,7 @@ async def list_hospitals():
                 "cath_lab": h.cath_lab,
                 "phone": h.phone,
                 "emergency_phone": h.emergency_phone,
+                "status": capacity.get_status(h.id),
             }
             for h in hospitals
         ],

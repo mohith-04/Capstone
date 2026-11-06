@@ -35,6 +35,10 @@ from routers import route as route_router
 from routers import simulation as sim_router
 from routers import signals as signals_router
 from routers import alerts as alerts_router
+from routers import auth as auth_router
+from routers import org as org_router
+from routers import triage as triage_router
+import db
 from services.graph import load_graph
 
 logging.basicConfig(
@@ -58,6 +62,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db.init_db()
     logger.info("=== Startup: loading road network graph ===")
     try:
         G = load_graph()
@@ -121,6 +126,9 @@ app.include_router(route_router.router)
 app.include_router(sim_router.router)
 app.include_router(signals_router.router)
 app.include_router(alerts_router.router)
+app.include_router(auth_router.router)   # Stage 6: accounts
+app.include_router(org_router.router)    # Stage 6: hospital dashboard
+app.include_router(triage_router.router) # Stage 6: capacity-aware routing
 
 
 # ---------------------------------------------------------------------------
